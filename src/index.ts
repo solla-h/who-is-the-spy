@@ -1,9 +1,14 @@
 import { handleRequest } from './router';
 import { syncWordPairs } from './sync-words';
+import { getAssetFromKV, NotFoundError, MethodNotAllowedError } from '@cloudflare/kv-asset-handler';
 
 export interface Env {
   DB: D1Database;
+  __STATIC_CONTENT: KVNamespace;
 }
+
+// Manifest for static assets (injected by wrangler)
+declare const __STATIC_CONTENT_MANIFEST: string;
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -17,7 +22,78 @@ export default {
       return handleRequest(request, env);
     }
     
-    // Serve static files (handled by Cloudflare Sites)
-    return new Response('Not Found', { status: 404 });
+    // Serve static files from KV
+    try {
+      // Parse the manifest
+      const manifest = JSON.parse(__STATIC_CONTENT_MANIFEST);
+      
+      return await getAssetFromKV(
+        {
+          request,
+          waitUntil: ctx.waitUntil.bind(ctx),
+        },
+        {
+          ASSET_NAMESPACE: env.__STATIC_CONTENT,
+          ASSET_MANIFEST: manifest,
+          // Serve index.html for root path
+          mapRequestToAsset: (req) => {
+            const url = new URL(req.url);
+            // Serve index.html for root path or paths without extension
+            if (url.pathname === '/' || !url.pathname.includes('.')) {
+              return new Request(`${url.origin}/index.html`, req);
+            }
+            return req;
+          },
+        }
+      );
+    } catch (e) {
+      if (e instanceof NotFoundError) {
+        // For SPA routing, serve index.html for any non-file path
+        try {
+          const manifest = JSON.parse(__STATIC_CONTENT_MANIFEST);
+          return await getAssetFromKV(
+            {
+              request: new Request(`${url.origin}/index.html`, request),
+              waitUntil: ctx.waitUntil.bind(ctx),
+            },
+            {
+              ASSET_NAMESPACE: env.__STATIC_CONTENT,
+              ASSET_MANIFEST: manifest,
+            }
+          );
+        } catch {
+          return new Response('Not Found', { status: 404 });
+        }
+      } else if (e instanceof MethodNotAllowedError) {
+        return new Response('Method Not Allowed', { status: 405 });
+      }
+      return new Response('Internal Server Error', { status: 500 });
+    }
+  },
+
+  // Scheduled handler for room cleanup (runs every hour)
+  async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(cleanupInactiveRooms(env.DB));
   },
 };
+
+/**
+ * Clean up rooms that have been inactive for more than 24 hours
+ * Requirements: 12.2
+ */
+async function cleanupInactiveRooms(db: D1Database): Promise<void> {
+  const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+  
+  try {
+    // Delete rooms that haven't been updated in 24 hours
+    // CASCADE will automatically delete related players, descriptions, and votes
+    await db.prepare(`
+      DELETE FROM rooms 
+      WHERE updated_at < ?
+    `).bind(twentyFourHoursAgo).run();
+    
+    console.log('Room cleanup completed successfully');
+  } catch (error) {
+    console.error('Room cleanup failed:', error);
+  }
+}

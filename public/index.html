@@ -3,13 +3,270 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4a90d9">
+  <meta name="description" content="谁是卧底 - 多人社交推理游戏">
   <title>谁是卧底</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="app">
-    <!-- Pages will be rendered here -->
+    <!-- Page Loader -->
+    <div id="page-loader" class="hidden">
+      <div class="loader-spinner"></div>
+      <p class="loader-text">加载中...</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Confirm Dialog -->
+    <div id="confirm-dialog" class="dialog-overlay hidden">
+      <div class="dialog-box">
+        <div id="confirm-icon" class="dialog-icon warning">⚠</div>
+        <h3 id="confirm-title" class="dialog-title">确认操作</h3>
+        <p id="confirm-message"></p>
+        <div class="dialog-buttons">
+          <button id="confirm-cancel" class="btn btn-secondary">取消</button>
+          <button id="confirm-ok" class="btn btn-primary">确认</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Home -->
+    <div id="page-home" class="page">
+      <div class="page-content">
+        <header class="app-header">
+          <h1 class="app-title">谁是卧底</h1>
+          <p class="app-subtitle">Who is the Spy</p>
+        </header>
+        <div class="home-actions">
+          <button id="btn-create-room" class="btn btn-primary btn-large">创建房间</button>
+          <button id="btn-join-room" class="btn btn-secondary btn-large">加入房间</button>
+        </div>
+        <footer class="home-footer">
+          <a href="#rules" class="link">游戏规则</a>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Page: Create Room -->
+    <div id="page-create" class="page hidden">
+      <div class="page-content">
+        <header class="page-header">
+          <button class="btn-back" data-back="home">←</button>
+          <h2>创建房间</h2>
+        </header>
+        <form id="form-create" class="form">
+          <div class="form-group">
+            <label for="create-name">你的昵称</label>
+            <input type="text" id="create-name" placeholder="2-10个字符" minlength="2" maxlength="10" required>
+          </div>
+          <div class="form-group">
+            <label for="create-password">房间密码</label>
+            <input type="password" id="create-password" placeholder="4-8个字符" minlength="4" maxlength="8" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-large">创建房间</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Page: Join Room -->
+    <div id="page-join" class="page hidden">
+      <div class="page-content">
+        <header class="page-header">
+          <button class="btn-back" data-back="home">←</button>
+          <h2>加入房间</h2>
+        </header>
+        <form id="form-join" class="form">
+          <div class="form-group">
+            <label for="join-code">房间号</label>
+            <input type="text" id="join-code" placeholder="6位数字" pattern="[0-9]{6}" maxlength="6" required inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label for="join-password">房间密码</label>
+            <input type="password" id="join-password" placeholder="4-8个字符" minlength="4" maxlength="8" required>
+          </div>
+          <div class="form-group">
+            <label for="join-name">你的昵称</label>
+            <input type="text" id="join-name" placeholder="2-10个字符" minlength="2" maxlength="10" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-large">加入房间</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Page: Waiting Room -->
+    <div id="page-waiting" class="page hidden">
+      <div class="page-content">
+        <header class="page-header">
+          <button class="btn-back" data-back="home">←</button>
+          <h2>等待中</h2>
+        </header>
+        <div class="room-info">
+          <div class="room-code-display">
+            <span class="label">房间号</span>
+            <span id="waiting-room-code" class="code">------</span>
+            <button id="btn-copy-code" class="btn-icon" title="复制房间号">📋</button>
+          </div>
+        </div>
+        <div class="player-list-section">
+          <h3>玩家列表 (<span id="player-count">0</span>人)</h3>
+          <ul id="player-list" class="player-list"></ul>
+        </div>
+        <div id="host-controls" class="host-controls hidden">
+          <div class="settings-group">
+            <label for="spy-count">卧底数量</label>
+            <div class="number-input">
+              <button id="spy-decrease" class="btn-icon">−</button>
+              <span id="spy-count-display">1</span>
+              <button id="spy-increase" class="btn-icon">+</button>
+            </div>
+          </div>
+          <button id="btn-start-game" class="btn btn-primary btn-large">开始游戏</button>
+        </div>
+        <div id="guest-waiting" class="guest-waiting">
+          <p>等待房主开始游戏...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Game -->
+    <div id="page-game" class="page hidden">
+      <div class="page-content">
+        <!-- Game Header -->
+        <header class="game-header">
+          <div class="game-phase" id="game-phase">游戏中</div>
+          <div class="game-round">第 <span id="game-round">1</span> 轮</div>
+        </header>
+
+        <!-- Word Reveal Phase -->
+        <div id="phase-word-reveal" class="game-phase-content hidden">
+          <div class="word-reveal-card">
+            <p class="word-label">你的词语是</p>
+            <p id="my-word" class="word-display">???</p>
+            <p class="word-hint">请记住你的词语，不要让别人看到</p>
+          </div>
+          <button id="btn-confirm-word" class="btn btn-primary btn-large">我记住了</button>
+        </div>
+
+        <!-- Description Phase -->
+        <div id="phase-description" class="game-phase-content hidden">
+          <div class="current-turn">
+            <p>当前描述：<span id="current-player-name">---</span></p>
+          </div>
+          <div class="description-history">
+            <h4>描述记录</h4>
+            <ul id="description-list" class="description-list"></ul>
+          </div>
+          <div id="my-turn-input" class="my-turn-input hidden">
+            <form id="form-description">
+              <div class="form-group">
+                <input type="text" id="description-input" placeholder="输入你的描述（5-50字）" minlength="5" maxlength="50">
+              </div>
+              <button type="submit" class="btn btn-primary">提交描述</button>
+            </form>
+          </div>
+          <div id="host-game-controls" class="host-game-controls hidden">
+            <button id="btn-next-player" class="btn btn-secondary">跳过当前玩家</button>
+            <button id="btn-start-voting" class="btn btn-primary">开始投票</button>
+          </div>
+        </div>
+
+        <!-- Voting Phase -->
+        <div id="phase-voting" class="game-phase-content hidden">
+          <div class="voting-header">
+            <p>请投票选出你认为的卧底</p>
+            <p class="voting-progress">已投票：<span id="vote-count">0</span>/<span id="alive-count">0</span></p>
+          </div>
+          <ul id="vote-player-list" class="vote-player-list"></ul>
+          <div id="my-vote-status" class="my-vote-status hidden">
+            <p>你已投票给：<span id="my-vote-target">---</span></p>
+          </div>
+          <div id="host-voting-controls" class="host-voting-controls">
+            <button id="btn-finalize-voting" class="btn btn-primary btn-large hidden">结束投票</button>
+          </div>
+        </div>
+
+        <!-- Result Phase -->
+        <div id="phase-result" class="game-phase-content hidden">
+          <div class="result-card">
+            <h3>投票结果</h3>
+            <div id="elimination-result" class="elimination-result"></div>
+          </div>
+          <div id="host-result-controls" class="host-result-controls">
+            <button id="btn-continue-game" class="btn btn-primary btn-large hidden">继续游戏</button>
+          </div>
+        </div>
+
+        <!-- Game Over Phase -->
+        <div id="phase-game-over" class="game-phase-content hidden">
+          <div class="game-over-card">
+            <h2 id="winner-announcement">游戏结束</h2>
+            <div class="role-reveal">
+              <h4>角色揭晓</h4>
+              <ul id="role-reveal-list" class="role-reveal-list"></ul>
+            </div>
+            <div class="word-reveal">
+              <p>平民词语：<span id="civilian-word">---</span></p>
+              <p>卧底词语：<span id="spy-word">---</span></p>
+            </div>
+          </div>
+          <div id="host-restart-controls" class="host-restart-controls hidden">
+            <button id="btn-restart-game" class="btn btn-primary btn-large">再来一局</button>
+          </div>
+        </div>
+
+        <!-- Host Restart Button (visible in all game phases) -->
+        <div id="host-restart-btn" class="host-restart-floating hidden">
+          <button id="btn-restart-anytime" class="btn btn-danger">重新开始</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page: Rules -->
+    <div id="page-rules" class="page hidden">
+      <div class="page-content">
+        <header class="page-header">
+          <button class="btn-back" data-back="home">←</button>
+          <h2>游戏规则</h2>
+        </header>
+        <div class="rules-content">
+          <section class="rule-section">
+            <h3>游戏简介</h3>
+            <p>谁是卧底是一款多人社交推理游戏。游戏中，大部分玩家是"平民"，少数玩家是"卧底"。平民和卧底会分别获得两个相似但不同的词语。</p>
+          </section>
+          <section class="rule-section">
+            <h3>游戏流程</h3>
+            <ol>
+              <li>房主创建房间，其他玩家加入</li>
+              <li>房主设置卧底数量并开始游戏</li>
+              <li>每位玩家查看自己的词语</li>
+              <li>轮流描述自己的词语（不能直接说出词语）</li>
+              <li>描述结束后进行投票</li>
+              <li>得票最多的玩家被淘汰并揭示身份</li>
+              <li>重复描述和投票，直到游戏结束</li>
+            </ol>
+          </section>
+          <section class="rule-section">
+            <h3>胜利条件</h3>
+            <ul>
+              <li><strong>平民胜利</strong>：所有卧底被淘汰</li>
+              <li><strong>卧底胜利</strong>：存活卧底数量 ≥ 存活平民数量</li>
+            </ul>
+          </section>
+          <section class="rule-section">
+            <h3>游戏技巧</h3>
+            <ul>
+              <li>平民：描述要准确但不能太明显</li>
+              <li>卧底：观察他人描述，尽量融入</li>
+              <li>注意观察每个人的反应和描述</li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>

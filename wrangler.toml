@@ -9,3 +9,8 @@ bucket = "./public"
 binding = "DB"
 database_name = "who-is-spy-db"
 database_id = "local-dev-db"
+
+# Scheduled trigger for room cleanup (runs every hour)
+# Requirements: 12.2 - Clean up rooms inactive for more than 24 hours
+[triggers]
+crons = ["0 * * * *"]

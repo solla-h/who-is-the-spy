@@ -156,6 +156,13 @@ export async function getRoomState(
       state.result = {
         winner: gameState.winner,
       };
+      // Reveal both words after game over (Requirements 8.3)
+      if (room.civilian_word) {
+        state.civilianWord = room.civilian_word;
+      }
+      if (room.spy_word) {
+        state.spyWord = room.spy_word;
+      }
     }
 
     // Add elimination result if in result phase

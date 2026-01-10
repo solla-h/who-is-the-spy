@@ -137,6 +137,9 @@ export interface RoomStateResponse {
   myWord?: string;
   myRole?: PlayerRole;
   isHost: boolean;
+  // Words revealed after game over (Requirements 8.3)
+  civilianWord?: string;
+  spyWord?: string;
 }
 
 // Error codes

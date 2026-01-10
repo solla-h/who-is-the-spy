@@ -5,6 +5,7 @@
 import type { Env } from './index';
 import { createRoom, joinRoom } from './api/room';
 import { getRoomState } from './api/state';
+import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, submitVote, finalizeVoting, continueGame, restartGame } from './api/game';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -55,8 +56,81 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     // Room action route
     const actionMatch = path.match(/^\/api\/room\/([^/]+)\/action$/);
     if (actionMatch && method === 'POST') {
-      // TODO: Implement in later tasks
-      return jsonResponse({ error: 'Not implemented' }, 501, corsHeaders);
+      const roomId = actionMatch[1];
+      
+      try {
+        const body = await request.json() as { token: string; action: { type: string } };
+        const { token, action } = body;
+        
+        if (!token) {
+          return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
+        }
+        
+        if (!action || !action.type) {
+          return jsonResponse({ success: false, error: '缺少action参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
+        }
+        
+        // Handle different action types
+        switch (action.type) {
+          case 'start-game': {
+            const result = await startGame(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'confirm-word': {
+            const result = await confirmWord(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'submit-description': {
+            const { text } = action as { type: string; text: string };
+            if (!text) {
+              return jsonResponse({ success: false, error: '缺少描述文本', code: 'INVALID_INPUT' }, 400, corsHeaders);
+            }
+            const result = await submitDescription(roomId, token, text, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'next-player': {
+            const result = await skipPlayer(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'start-voting': {
+            const result = await startVoting(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'vote': {
+            const { targetId } = action as { type: string; targetId: string };
+            if (!targetId) {
+              return jsonResponse({ success: false, error: '缺少目标玩家ID', code: 'INVALID_INPUT' }, 400, corsHeaders);
+            }
+            const result = await submitVote(roomId, token, targetId, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'finalize-voting': {
+            const result = await finalizeVoting(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'continue-game': {
+            const result = await continueGame(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'restart-game': {
+            const result = await restartGame(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          default:
+            return jsonResponse({ success: false, error: '未知操作类型', code: 'INVALID_ACTION' }, 400, corsHeaders);
+        }
+      } catch (error) {
+        return jsonResponse({ success: false, error: '请求格式错误', code: 'INVALID_INPUT' }, 400, corsHeaders);
+      }
     }
 
     return jsonResponse({ error: 'Not found' }, 404, corsHeaders);
