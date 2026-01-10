@@ -4,6 +4,7 @@
 
 import type { Env } from './index';
 import { createRoom, joinRoom } from './api/room';
+import { getRoomState } from './api/state';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -39,8 +40,16 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
     // Room state route
     const stateMatch = path.match(/^\/api\/room\/([^/]+)\/state$/);
     if (stateMatch && method === 'GET') {
-      // TODO: Implement in task 5.1
-      return jsonResponse({ error: 'Not implemented' }, 501, corsHeaders);
+      const roomId = stateMatch[1];
+      const token = url.searchParams.get('token');
+      
+      if (!token) {
+        return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
+      }
+      
+      const result = await getRoomState(roomId, token, env);
+      const status = result.success ? 200 : getErrorStatus(result.code);
+      return jsonResponse(result, status, corsHeaders);
     }
     
     // Room action route
