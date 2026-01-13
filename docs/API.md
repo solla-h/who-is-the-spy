@@ -165,6 +165,7 @@
       "minPlayers": 3,
       "maxPlayers": 20
     },
+    "myPlayerId": "uuid",         // 当前玩家的ID
     "isHost": true,               // 当前玩家是否为房主
     "myWord": "苹果",             // 当前玩家的词语 (非 waiting 阶段)
     "myRole": "civilian",         // 当前玩家的角色 (非 waiting 阶段)

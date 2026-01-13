@@ -2010,7 +2010,7 @@ function updateDescriptionUI(state) {
   const alivePlayers = state.players ? state.players.filter(p => p.isAlive) : [];
 
   // Find current player based on turn
-  const currentTurnIndex = state.currentTurn % alivePlayers.length;
+  const currentTurnIndex = alivePlayers.length > 0 ? state.currentTurn % alivePlayers.length : 0;
   const currentPlayer = alivePlayers[currentTurnIndex];
 
   // Update current player indicator
@@ -2034,38 +2034,17 @@ function updateDescriptionUI(state) {
     }
   }
 
-  // Find my player info
-  const myPlayer = state.players ? state.players.find(p => {
-    // Check if this is the current player by comparing with state
-    return state.isHost ? p.isHost : !p.isHost;
-  }) : null;
-
-  // Determine if it's my turn - we need to find our player ID
-  // Since we don't have direct access to myPlayerId, we check if we're the current player
-  // by matching the current turn player with our position
-  let isMyTurn = false;
-  if (currentPlayer && state.players) {
-    // Find our player - we can identify ourselves by checking who we are in the list
-    // The API should provide myPlayerId, but if not, we use a workaround
-    const myIndex = state.players.findIndex(p => {
-      // We are the player whose word we can see
-      return state.myWord !== undefined;
-    });
-
-    // Check if current player is us by comparing indices
-    if (myIndex >= 0) {
-      const myPlayerInfo = state.players[myIndex];
-      isMyTurn = currentPlayer.id === myPlayerInfo?.id;
-    }
-  }
+  // Use myPlayerId from state to identify current player
+  const myPlayerId = state.myPlayerId;
+  const myPlayer = state.players?.find(p => p.id === myPlayerId);
+  const isMyTurn = currentPlayer && currentPlayer.id === myPlayerId;
+  const amIAlive = myPlayer?.isAlive || false;
 
   // Show/hide description input based on turn and alive status
   const myTurnInput = document.getElementById('my-turn-input');
   if (myTurnInput) {
-    // For now, show input if we're alive and it might be our turn
-    // The actual turn check will be done server-side
-    const amIAlive = state.players ? state.players.some(p => p.isAlive && state.myWord) : false;
-    myTurnInput.classList.toggle('hidden', !amIAlive);
+    // Show input only if it's my turn and I'm alive
+    myTurnInput.classList.toggle('hidden', !isMyTurn || !amIAlive);
   }
 
   // Show/hide host game controls
@@ -2090,24 +2069,10 @@ function updateVotingUI(state) {
   if (voteCountDisplay) voteCountDisplay.textContent = votedCount;
   if (aliveCountDisplay) aliveCountDisplay.textContent = alivePlayers.length;
 
-  // Check if current player has voted
-  // We identify ourselves by checking who has our word
-  let hasVoted = false;
-  let myPlayerId = null;
-
-  // Find our player - we need to identify ourselves
-  // Since we have myWord, we can find ourselves by checking the state
-  if (state.players) {
-    for (const player of state.players) {
-      // We can identify ourselves if we're the host or by other means
-      // For now, we'll track hasVoted based on the UI state
-      if (player.isHost === state.isHost && player.isAlive) {
-        hasVoted = player.hasVoted || false;
-        myPlayerId = player.id;
-        break;
-      }
-    }
-  }
+  // Use myPlayerId from state to identify current player
+  const myPlayerId = state.myPlayerId;
+  const myPlayer = state.players?.find(p => p.id === myPlayerId);
+  const hasVoted = myPlayer?.hasVoted || false;
 
   // Update vote player list
   const voteList = document.getElementById('vote-player-list');

@@ -134,6 +134,7 @@ export interface RoomStateResponse {
     winner?: 'civilian' | 'spy';
   };
   settings: GameSettings;
+  myPlayerId: string;  // Current player's ID
   myWord?: string;
   myRole?: PlayerRole;
   isHost: boolean;

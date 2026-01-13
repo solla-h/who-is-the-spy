@@ -137,6 +137,7 @@ export async function getRoomState(
           }))
         : [], // Only show votes after voting is complete
       settings,
+      myPlayerId: requestingPlayer.id,  // Add current player's ID
       isHost: requestingPlayer.id === room.host_id,
     };
 
