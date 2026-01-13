@@ -19,6 +19,20 @@
 - [Cloudflare 账户](https://dash.cloudflare.com/sign-up)（免费套餐即可）
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 
+### 安装 Wrangler CLI
+
+**Windows PowerShell / macOS / Linux：**
+
+```bash
+npm install -g wrangler
+```
+
+安装完成后验证：
+
+```bash
+wrangler --version
+```
+
 ### 安装依赖
 
 ```bash
@@ -78,12 +92,14 @@ database_id = "your-actual-database-id"  # 替换为实际 ID
 
 ```bash
 wrangler d1 execute who-is-spy-db --file=./schema.sql
+# wrangler d1 execute who-is-spy-db --remote --file=./schema.sql # 本地执行
 ```
 
 5. 部署应用：
 
 ```bash
 npm run deploy
+# wrangler deploy
 ```
 
 部署完成后，Wrangler 会输出应用的 URL。

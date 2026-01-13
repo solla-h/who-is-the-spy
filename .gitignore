@@ -3,6 +3,10 @@ node_modules/
 
 # Kiro
 .kiro/
+.agent/
+.claude/
+.ai_memory/
+
 
 # Build output
 dist/
