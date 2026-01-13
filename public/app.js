@@ -1993,10 +1993,28 @@ function updateWordRevealUI(state) {
     wordDisplay.textContent = state.myWord || '???';
   }
 
-  // The confirm button is always visible in this phase
+  // Show different UI for host and non-host players
   const confirmBtn = document.getElementById('btn-confirm-word');
-  if (confirmBtn) {
-    confirmBtn.disabled = false;
+  const waitingHint = document.getElementById('word-reveal-waiting');
+  
+  if (state.isHost) {
+    // Host sees the "Start Description" button
+    if (confirmBtn) {
+      confirmBtn.classList.remove('hidden');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '开始描述阶段';
+    }
+    if (waitingHint) {
+      waitingHint.classList.add('hidden');
+    }
+  } else {
+    // Non-host players see waiting message
+    if (confirmBtn) {
+      confirmBtn.classList.add('hidden');
+    }
+    if (waitingHint) {
+      waitingHint.classList.remove('hidden');
+    }
   }
 }
 

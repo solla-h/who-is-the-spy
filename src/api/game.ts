@@ -531,6 +531,7 @@ export async function startVoting(
 /**
  * Confirm word action handler - transitions from word-reveal to description phase
  * Requirements: 5.4
+ * Only the host can start the description phase
  */
 export async function confirmWord(
   roomId: string,
@@ -573,8 +574,16 @@ export async function confirmWord(
       };
     }
 
-    // For simplicity, any player confirming transitions to description phase
-    // In a more complex implementation, we might track individual confirmations
+    // Only host can start the description phase
+    if (player.id !== room.host_id) {
+      return {
+        success: false,
+        error: '只有房主可以开始描述阶段',
+        code: ErrorCode.NOT_AUTHORIZED,
+      };
+    }
+
+    // Transition to description phase
     const timestamp = Date.now();
     await env.DB.prepare(`
       UPDATE rooms SET phase = 'description', updated_at = ? WHERE id = ?
