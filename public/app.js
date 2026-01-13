@@ -2141,25 +2141,34 @@ function updateVotingUI(state) {
 function updateResultUI(state) {
   const resultDisplay = document.getElementById('elimination-result');
   if (resultDisplay && state.result) {
-    if (state.result.eliminatedPlayerId) {
-      const eliminatedPlayer = state.players?.find(p => p.id === state.result.eliminatedPlayerId);
-      if (eliminatedPlayer) {
-        // Get the role - it should be revealed after elimination
-        const roleText = eliminatedPlayer.role === 'spy' ? '卧底' : '平民';
-        const roleClass = eliminatedPlayer.role === 'spy' ? 'spy' : 'civilian';
+    const eliminatedIds = state.result.eliminatedPlayerIds || [];
+    
+    if (eliminatedIds.length > 0) {
+      // Find all eliminated players
+      const eliminatedPlayers = eliminatedIds
+        .map(id => state.players?.find(p => p.id === id))
+        .filter(p => p != null);
 
+      if (eliminatedPlayers.length === 1) {
+        // Single player eliminated
         resultDisplay.innerHTML = `
           <div class="eliminated-player">
-            <p class="eliminated-name">${escapeHtml(eliminatedPlayer.name)}</p>
+            <p class="eliminated-name">${escapeHtml(eliminatedPlayers[0].name)}</p>
             <p class="eliminated-text">被淘汰了</p>
-            <p class="role-reveal">
-              身份：<span class="role ${roleClass}">${roleText}</span>
-            </p>
+          </div>
+        `;
+      } else if (eliminatedPlayers.length > 1) {
+        // Multiple players eliminated (tie)
+        const names = eliminatedPlayers.map(p => escapeHtml(p.name)).join('、');
+        resultDisplay.innerHTML = `
+          <div class="eliminated-player">
+            <p class="eliminated-name">${names}</p>
+            <p class="eliminated-text">平票，全部被淘汰</p>
           </div>
         `;
       }
     } else {
-      // No one eliminated (tie or other scenario)
+      // No one eliminated
       resultDisplay.innerHTML = `
         <div class="no-elimination">
           <p>本轮无人被淘汰</p>

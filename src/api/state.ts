@@ -167,13 +167,10 @@ export async function getRoomState(
     }
 
     // Add elimination result if in result phase
-    if (room.phase === 'result' && gameState?.eliminatedPlayers) {
-      const lastEliminated = gameState.eliminatedPlayers[gameState.eliminatedPlayers.length - 1];
-      if (lastEliminated) {
-        state.result = {
-          eliminatedPlayerId: lastEliminated,
-        };
-      }
+    if (room.phase === 'result' && gameState?.lastRoundEliminated) {
+      state.result = {
+        eliminatedPlayerIds: gameState.lastRoundEliminated,
+      };
     }
 
     return {

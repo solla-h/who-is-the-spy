@@ -20,6 +20,7 @@ export interface GameState {
   eliminatedPlayers: string[];
   spyIds: string[];
   winner?: 'civilian' | 'spy';
+  lastRoundEliminated?: string[];  // Players eliminated in the last voting round
 }
 
 // Database row types
@@ -130,7 +131,7 @@ export interface RoomStateResponse {
   descriptions: { playerId: string; playerName: string; text: string; round: number }[];
   votes: { voterId: string; targetId: string; round: number }[];
   result?: {
-    eliminatedPlayerId?: string;
+    eliminatedPlayerIds?: string[];  // Changed from single ID to array
     winner?: 'civilian' | 'spy';
   };
   settings: GameSettings;

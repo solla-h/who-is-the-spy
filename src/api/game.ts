@@ -910,6 +910,9 @@ export async function finalizeVoting(
       ? JSON.parse(room.game_state)
       : { eliminatedPlayers: [], spyIds: [] };
 
+    // Record this round's eliminated players for display
+    gameState.lastRoundEliminated = tallyResult.eliminatedPlayerIds;
+
     // Eliminate players with most votes (Requirement 7.5, 7.6)
     for (const eliminatedId of tallyResult.eliminatedPlayerIds) {
       // Mark player as eliminated

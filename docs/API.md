@@ -170,7 +170,7 @@
     "myWord": "苹果",             // 当前玩家的词语 (非 waiting 阶段)
     "myRole": "civilian",         // 当前玩家的角色 (非 waiting 阶段)
     "result": {                   // 结果信息 (result/game-over 阶段)
-      "eliminatedPlayerId": "uuid",
+      "eliminatedPlayerIds": ["uuid1", "uuid2"],  // 本轮被淘汰的玩家ID数组（平票时有多个）
       "winner": "civilian"
     },
     "civilianWord": "苹果",       // 平民词语 (仅 game-over 阶段)
