@@ -1771,22 +1771,30 @@ function handleGameStateChange(state, reason) {
 
   // Update UI based on current page and game phase
   const currentPage = router.getCurrentPage();
+  
+  console.log('handleGameStateChange - phase:', state.phase, 'currentPage:', currentPage);
 
   // Navigate to appropriate page based on game phase
-  if (state.phase === 'waiting' && currentPage !== 'waiting' && currentPage !== 'home' && currentPage !== 'create' && currentPage !== 'join') {
-    router.navigate('waiting');
-  } else if (state.phase !== 'waiting' && currentPage === 'waiting') {
-    router.navigate('game');
-  }
-
-  // Update waiting room UI
-  if (currentPage === 'waiting') {
-    updateWaitingRoomUI(state);
-  }
-
-  // Update game UI
-  if (currentPage === 'game') {
-    updateGameUI(state);
+  if (state.phase === 'waiting') {
+    if (currentPage !== 'waiting' && currentPage !== 'home' && currentPage !== 'create' && currentPage !== 'join') {
+      router.navigate('waiting');
+    }
+    // Update waiting room UI if we're on waiting page
+    if (currentPage === 'waiting') {
+      updateWaitingRoomUI(state);
+    }
+  } else {
+    // Game is in progress (not waiting phase)
+    if (currentPage === 'waiting') {
+      router.navigate('game');
+    }
+    // Update game UI - do this regardless of navigation since we need to show the game state
+    // Use setTimeout to ensure DOM is ready after navigation
+    if (currentPage === 'waiting') {
+      setTimeout(() => updateGameUI(state), 100);
+    } else if (currentPage === 'game') {
+      updateGameUI(state);
+    }
   }
 }
 
@@ -1899,6 +1907,9 @@ function updateWaitingRoomUI(state) {
  * @param {Object} state - Room state
  */
 function updateGameUI(state) {
+  console.log('updateGameUI called with state:', state);
+  console.log('Current phase:', state.phase);
+  
   // Update game header
   const phaseDisplay = document.getElementById('game-phase');
   const roundDisplay = document.getElementById('game-round');
@@ -1922,9 +1933,14 @@ function updateGameUI(state) {
   document.querySelectorAll('.game-phase-content').forEach(el => el.classList.add('hidden'));
 
   // Show current phase content
-  const phaseElement = document.getElementById(`phase-${state.phase}`);
+  const phaseElementId = `phase-${state.phase}`;
+  const phaseElement = document.getElementById(phaseElementId);
+  console.log('Looking for phase element:', phaseElementId, 'Found:', phaseElement);
+  
   if (phaseElement) {
     phaseElement.classList.remove('hidden');
+  } else {
+    console.error('Phase element not found for phase:', state.phase);
   }
 
   // Update phase-specific UI
