@@ -666,8 +666,6 @@ export async function confirmWordPlayer(
     };
   }
 }
-  }
-}
 
 /**
  * Validate vote submission
