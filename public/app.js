@@ -578,9 +578,12 @@ class GameStateManager {
   /**
    * Handle state update from API
    * @private
-   * @param {Object} newState - New room state
+   * @param {Object} result - API result containing state
    */
-  _handleStateUpdate(newState) {
+  _handleStateUpdate(result) {
+    // Extract the actual state from the API response
+    // API returns { success: true, state: { phase, players, ... } }
+    const newState = result.state || result;
     const previousState = this.roomState;
     const hasChanged = this._hasStateChanged(previousState, newState);
 
@@ -1761,7 +1764,8 @@ function handleGameStateChange(state, reason) {
     return;
   }
 
-  if (!state) {
+  if (!state || !state.phase) {
+    console.warn('Invalid state received:', state);
     return;
   }
 
