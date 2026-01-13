@@ -5,7 +5,7 @@
 import type { Env } from './index';
 import { createRoom, joinRoom } from './api/room';
 import { getRoomState } from './api/state';
-import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, submitVote, finalizeVoting, continueGame, restartGame, updateSettings, kickPlayer } from './api/game';
+import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, confirmWordPlayer, submitVote, finalizeVoting, continueGame, restartGame, updateSettings, kickPlayer } from './api/game';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -79,6 +79,11 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
           }
           case 'confirm-word': {
             const result = await confirmWord(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'confirm-word-player': {
+            const result = await confirmWordPlayer(roomId, token, env);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }

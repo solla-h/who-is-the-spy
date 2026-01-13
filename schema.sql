@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS players (
   role TEXT DEFAULT NULL,
   is_alive INTEGER DEFAULT 1,
   is_online INTEGER DEFAULT 1,
+  word_confirmed INTEGER DEFAULT 0,
   last_seen INTEGER NOT NULL,
   join_order INTEGER NOT NULL,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE

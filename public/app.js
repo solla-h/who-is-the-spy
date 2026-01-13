@@ -314,13 +314,23 @@ class ApiClient {
   }
 
   /**
-   * Confirm word viewing
+   * Confirm word viewing (host only - starts description phase)
    * @param {string} roomId - Room ID
    * @param {string} token - Player token
    * @returns {Promise<{success: boolean, error?: string, code?: string}>}
    */
   async confirmWord(roomId, token) {
     return this.performAction(roomId, token, { type: 'confirm-word' });
+  }
+
+  /**
+   * Player confirms they have seen their word (non-host players)
+   * @param {string} roomId - Room ID
+   * @param {string} token - Player token
+   * @returns {Promise<{success: boolean, error?: string, code?: string}>}
+   */
+  async confirmWordPlayer(roomId, token) {
+    return this.performAction(roomId, token, { type: 'confirm-word-player' });
   }
 
   /**
@@ -1262,6 +1272,7 @@ function setupEventHandlers() {
 
   // Game controls - Word reveal phase
   document.getElementById('btn-confirm-word')?.addEventListener('click', handleConfirmWord);
+  document.getElementById('btn-confirm-word-player')?.addEventListener('click', handleConfirmWord);
 
   // Description phase controls
   document.getElementById('form-description')?.addEventListener('submit', handleSubmitDescription);
@@ -1517,28 +1528,55 @@ async function handleKickPlayer(playerId) {
 
 /**
  * Handle confirm word button click (word-reveal phase)
+ * For host: starts the description phase
+ * For non-host: marks player as ready
  * Requirements: 5.6
  */
 async function handleConfirmWord() {
   if (!currentRoomId || !playerToken) return;
 
+  const state = gameStateManager.getState();
   const btn = document.getElementById('btn-confirm-word');
-  if (btn) setButtonLoading(btn, true);
+  const playerBtn = document.getElementById('btn-confirm-word-player');
+  
+  if (state?.isHost) {
+    // Host starts the description phase
+    if (btn) setButtonLoading(btn, true);
 
-  try {
-    const result = await apiClient.confirmWord(currentRoomId, playerToken);
+    try {
+      const result = await apiClient.confirmWord(currentRoomId, playerToken);
 
-    if (result.success) {
-      showToast('已确认', 'success');
-      gameStateManager.refresh();
-    } else {
-      showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
+      if (result.success) {
+        showToast('描述阶段开始', 'success');
+        gameStateManager.refresh();
+      } else {
+        showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
+      }
+    } catch (err) {
+      showToast('网络错误，请重试', 'error');
+      console.error('Confirm word error:', err);
+    } finally {
+      if (btn) setButtonLoading(btn, false);
     }
-  } catch (err) {
-    showToast('网络错误，请重试', 'error');
-    console.error('Confirm word error:', err);
-  } finally {
-    if (btn) setButtonLoading(btn, false);
+  } else {
+    // Non-host player confirms they've seen their word
+    if (playerBtn) setButtonLoading(playerBtn, true);
+
+    try {
+      const result = await apiClient.confirmWordPlayer(currentRoomId, playerToken);
+
+      if (result.success) {
+        showToast('已确认', 'success');
+        gameStateManager.refresh();
+      } else {
+        showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
+      }
+    } catch (err) {
+      showToast('网络错误，请重试', 'error');
+      console.error('Confirm word player error:', err);
+    } finally {
+      if (playerBtn) setButtonLoading(playerBtn, false);
+    }
   }
 }
 
@@ -1993,27 +2031,75 @@ function updateWordRevealUI(state) {
     wordDisplay.textContent = state.myWord || '???';
   }
 
+  // Get current player's confirmation status
+  const myPlayerId = state.myPlayerId;
+  const myPlayer = state.players?.find(p => p.id === myPlayerId);
+  const hasConfirmed = myPlayer?.hasConfirmedWord || false;
+
   // Show different UI for host and non-host players
   const confirmBtn = document.getElementById('btn-confirm-word');
+  const playerConfirmBtn = document.getElementById('btn-confirm-word-player');
   const waitingHint = document.getElementById('word-reveal-waiting');
+  const playerStatusList = document.getElementById('word-confirm-status');
   
   if (state.isHost) {
-    // Host sees the "Start Description" button
+    // Host sees the "Start Description" button and player status
     if (confirmBtn) {
       confirmBtn.classList.remove('hidden');
       confirmBtn.disabled = false;
-      confirmBtn.textContent = '开始描述阶段';
+    }
+    if (playerConfirmBtn) {
+      playerConfirmBtn.classList.add('hidden');
     }
     if (waitingHint) {
       waitingHint.classList.add('hidden');
     }
+    
+    // Show player confirmation status for host
+    if (playerStatusList && state.players) {
+      const confirmedCount = state.players.filter(p => p.hasConfirmedWord).length;
+      const totalCount = state.players.length;
+      
+      playerStatusList.innerHTML = `
+        <p class="status-header">玩家就绪状态 (${confirmedCount}/${totalCount})</p>
+        <ul class="player-status-list">
+          ${state.players.map(p => `
+            <li class="${p.hasConfirmedWord ? 'confirmed' : 'waiting'}">
+              <span class="player-name">${escapeHtml(p.name)}</span>
+              <span class="status-badge">${p.hasConfirmedWord ? '✓ 已就绪' : '等待中...'}</span>
+            </li>
+          `).join('')}
+        </ul>
+      `;
+      playerStatusList.classList.remove('hidden');
+    }
   } else {
-    // Non-host players see waiting message
+    // Non-host players see "I remember" button or waiting message
     if (confirmBtn) {
       confirmBtn.classList.add('hidden');
     }
-    if (waitingHint) {
-      waitingHint.classList.remove('hidden');
+    if (playerStatusList) {
+      playerStatusList.classList.add('hidden');
+    }
+    
+    if (hasConfirmed) {
+      // Already confirmed - show waiting message
+      if (playerConfirmBtn) {
+        playerConfirmBtn.classList.add('hidden');
+      }
+      if (waitingHint) {
+        waitingHint.classList.remove('hidden');
+        waitingHint.innerHTML = '<p>已确认，等待房主开始描述阶段...</p>';
+      }
+    } else {
+      // Not confirmed yet - show confirm button
+      if (playerConfirmBtn) {
+        playerConfirmBtn.classList.remove('hidden');
+        playerConfirmBtn.disabled = false;
+      }
+      if (waitingHint) {
+        waitingHint.classList.add('hidden');
+      }
     }
   }
 }

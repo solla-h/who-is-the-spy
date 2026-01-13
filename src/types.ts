@@ -48,6 +48,7 @@ export interface PlayerRow {
   role: PlayerRole | null;
   is_alive: number; // SQLite boolean
   is_online: number; // SQLite boolean
+  word_confirmed: number; // SQLite boolean - whether player confirmed seeing their word
   last_seen: number;
   join_order: number;
 }
@@ -118,6 +119,7 @@ export interface PlayerInfo {
   role?: PlayerRole;
   hasVoted?: boolean;
   hasDescribed?: boolean;
+  hasConfirmedWord?: boolean;  // Whether player has confirmed seeing their word
 }
 
 // Room state for API responses

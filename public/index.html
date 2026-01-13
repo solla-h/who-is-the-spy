@@ -153,10 +153,16 @@
             <p id="my-word" class="word-display">???</p>
             <p class="word-hint">请记住你的词语，不要让别人看到</p>
           </div>
-          <button id="btn-confirm-word" class="btn btn-primary btn-large">开始描述阶段</button>
+          <!-- Host: Start description phase button -->
+          <button id="btn-confirm-word" class="btn btn-primary btn-large hidden">开始描述阶段</button>
+          <!-- Non-host: Confirm button -->
+          <button id="btn-confirm-word-player" class="btn btn-primary btn-large hidden">我记住了</button>
+          <!-- Waiting hint for non-host players -->
           <div id="word-reveal-waiting" class="guest-waiting hidden">
             <p>等待房主开始描述阶段...</p>
           </div>
+          <!-- Player confirmation status (visible to host) -->
+          <div id="word-confirm-status" class="player-confirm-status hidden"></div>
         </div>
 
         <!-- Description Phase -->

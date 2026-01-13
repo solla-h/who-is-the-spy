@@ -105,6 +105,7 @@ export async function getRoomState(
         isOnline: p.is_online === 1,
         hasVoted: votes.some((v) => v.voter_id === p.id),
         hasDescribed: descriptions.some((d) => d.player_id === p.id && d.round === room.round),
+        hasConfirmedWord: p.word_confirmed === 1,
       };
 
       // Only reveal roles when game is over (Requirements 5.6)

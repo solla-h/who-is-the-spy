@@ -583,11 +583,16 @@ export async function confirmWord(
       };
     }
 
-    // Transition to description phase
+    // Transition to description phase and reset word_confirmed for all players
     const timestamp = Date.now();
-    await env.DB.prepare(`
-      UPDATE rooms SET phase = 'description', updated_at = ? WHERE id = ?
-    `).bind(timestamp, roomId).run();
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE rooms SET phase = 'description', updated_at = ? WHERE id = ?
+      `).bind(timestamp, roomId),
+      env.DB.prepare(`
+        UPDATE players SET word_confirmed = 0 WHERE room_id = ?
+      `).bind(roomId)
+    ]);
 
     return { success: true };
   } catch (error) {
@@ -597,6 +602,70 @@ export async function confirmWord(
       error: '确认词语失败，请重试',
       code: ErrorCode.DATABASE_ERROR,
     };
+  }
+}
+
+/**
+ * Player confirms they have seen their word
+ * This is for non-host players to indicate they are ready
+ */
+export async function confirmWordPlayer(
+  roomId: string,
+  playerToken: string,
+  env: Env
+): Promise<ActionResult> {
+  try {
+    // Get room
+    const room = await env.DB.prepare(`
+      SELECT * FROM rooms WHERE id = ?
+    `).bind(roomId).first<RoomRow>();
+
+    if (!room) {
+      return {
+        success: false,
+        error: '房间不存在',
+        code: ErrorCode.ROOM_NOT_FOUND,
+      };
+    }
+
+    // Check room phase - must be in word-reveal phase
+    if (room.phase !== 'word-reveal') {
+      return {
+        success: false,
+        error: '当前不是查看词语阶段',
+        code: ErrorCode.INVALID_PHASE,
+      };
+    }
+
+    // Verify player exists
+    const player = await env.DB.prepare(`
+      SELECT * FROM players WHERE token = ? AND room_id = ?
+    `).bind(playerToken, roomId).first<PlayerRow>();
+
+    if (!player) {
+      return {
+        success: false,
+        error: '玩家不存在',
+        code: ErrorCode.PLAYER_NOT_FOUND,
+      };
+    }
+
+    // Mark player as having confirmed their word
+    const timestamp = Date.now();
+    await env.DB.prepare(`
+      UPDATE players SET word_confirmed = 1, last_seen = ? WHERE id = ?
+    `).bind(timestamp, player.id).run();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Confirm word player error:', error);
+    return {
+      success: false,
+      error: '确认词语失败，请重试',
+      code: ErrorCode.DATABASE_ERROR,
+    };
+  }
+}
   }
 }
 
