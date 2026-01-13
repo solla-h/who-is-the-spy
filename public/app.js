@@ -2143,12 +2143,14 @@ function updateDescriptionUI(state) {
   const myPlayer = state.players?.find(p => p.id === myPlayerId);
   const isMyTurn = currentPlayer && currentPlayer.id === myPlayerId;
   const amIAlive = myPlayer?.isAlive || false;
+  const hasDescribed = myPlayer?.hasDescribed || false;
 
-  // Show/hide description input based on turn and alive status
+  // Show/hide description input based on turn, alive status, and whether already described
   const myTurnInput = document.getElementById('my-turn-input');
   if (myTurnInput) {
-    // Show input only if it's my turn and I'm alive
-    myTurnInput.classList.toggle('hidden', !isMyTurn || !amIAlive);
+    // Show input only if it's my turn, I'm alive, and I haven't described yet this round
+    const shouldShowInput = isMyTurn && amIAlive && !hasDescribed;
+    myTurnInput.classList.toggle('hidden', !shouldShowInput);
   }
 
   // Show/hide host game controls

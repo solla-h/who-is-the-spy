@@ -971,8 +971,16 @@ export async function finalizeVoting(
     `).bind(roomId, room.round).all<VoteRow>();
     const votes = votesResult.results || [];
 
+    console.log(`Finalizing voting for room ${roomId}, round ${room.round}, votes count: ${votes.length}`);
+    console.log('Votes:', JSON.stringify(votes.map(v => ({ voter: v.voter_id, target: v.target_id }))));
+
     // Tally votes (Requirements 7.4, 7.5, 7.6)
     const tallyResult = tallyVotes(votes.map(v => ({ targetId: v.target_id })));
+
+    console.log('Tally result:', {
+      maxVotes: tallyResult.maxVotes,
+      eliminatedPlayerIds: tallyResult.eliminatedPlayerIds
+    });
 
     // Parse current game state
     const gameState: GameState = room.game_state
@@ -981,6 +989,8 @@ export async function finalizeVoting(
 
     // Record this round's eliminated players for display
     gameState.lastRoundEliminated = tallyResult.eliminatedPlayerIds;
+
+    console.log('Game state after setting lastRoundEliminated:', JSON.stringify(gameState));
 
     // Eliminate players with most votes (Requirement 7.5, 7.6)
     for (const eliminatedId of tallyResult.eliminatedPlayerIds) {

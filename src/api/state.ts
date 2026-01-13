@@ -168,10 +168,20 @@ export async function getRoomState(
     }
 
     // Add elimination result if in result phase
-    if (room.phase === 'result' && gameState?.lastRoundEliminated) {
-      state.result = {
-        eliminatedPlayerIds: gameState.lastRoundEliminated,
-      };
+    if (room.phase === 'result') {
+      console.log('Result phase - gameState:', JSON.stringify(gameState));
+      console.log('lastRoundEliminated:', gameState?.lastRoundEliminated);
+      
+      if (gameState?.lastRoundEliminated) {
+        state.result = {
+          eliminatedPlayerIds: gameState.lastRoundEliminated,
+        };
+      } else {
+        // Fallback: set empty array if lastRoundEliminated is not set
+        state.result = {
+          eliminatedPlayerIds: [],
+        };
+      }
     }
 
     return {
