@@ -1910,6 +1910,12 @@ function updateGameUI(state) {
   console.log('updateGameUI called with state:', state);
   console.log('Current phase:', state.phase);
   
+  // Debug: Check if page-game is visible
+  const gamePage = document.getElementById('page-game');
+  console.log('Game page element:', gamePage);
+  console.log('Game page classList:', gamePage?.className);
+  console.log('Game page computed display:', gamePage ? window.getComputedStyle(gamePage).display : 'N/A');
+  
   // Update game header
   const phaseDisplay = document.getElementById('game-phase');
   const roundDisplay = document.getElementById('game-round');
@@ -1930,7 +1936,10 @@ function updateGameUI(state) {
   }
 
   // Hide all game phase content
-  document.querySelectorAll('.game-phase-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.game-phase-content').forEach(el => {
+    el.classList.add('hidden');
+    el.style.display = 'none';
+  });
 
   // Show current phase content
   const phaseElementId = `phase-${state.phase}`;
@@ -1938,7 +1947,11 @@ function updateGameUI(state) {
   console.log('Looking for phase element:', phaseElementId, 'Found:', phaseElement);
   
   if (phaseElement) {
+    console.log('Before removing hidden - classList:', phaseElement.className);
     phaseElement.classList.remove('hidden');
+    console.log('After removing hidden - classList:', phaseElement.className);
+    // Force display style as fallback (game-phase-content uses flex)
+    phaseElement.style.display = 'flex';
   } else {
     console.error('Phase element not found for phase:', state.phase);
   }
