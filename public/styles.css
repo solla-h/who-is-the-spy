@@ -14,20 +14,20 @@
   --color-danger: #dc3545;
   --color-warning: #ffc107;
   --color-info: #17a2b8;
-  
+
   --color-bg: #f8f9fa;
   --color-bg-card: #ffffff;
   --color-text: #212529;
   --color-text-muted: #6c757d;
   --color-border: #dee2e6;
-  
+
   /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
   --spacing-xl: 32px;
-  
+
   /* Typography */
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-size-sm: 14px;
@@ -35,21 +35,21 @@
   --font-size-lg: 18px;
   --font-size-xl: 24px;
   --font-size-xxl: 32px;
-  
+
   /* Border radius */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-full: 9999px;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  
+
   /* Touch target minimum size */
   --touch-target: 44px;
-  
+
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
@@ -58,7 +58,9 @@
 /* ========================================
    Reset & Base Styles
    ======================================== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -81,7 +83,9 @@ body {
 }
 
 /* Prevent zoom on input focus (iOS) */
-input, select, textarea {
+input,
+select,
+textarea {
   font-size: 16px;
 }
 
@@ -120,30 +124,63 @@ input, select, textarea {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* ========================================
    Typography
    ======================================== */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-weight: 600;
   line-height: 1.2;
 }
 
-h1 { font-size: var(--font-size-xxl); }
-h2 { font-size: var(--font-size-xl); }
-h3 { font-size: var(--font-size-lg); }
-h4 { font-size: var(--font-size-base); }
+h1 {
+  font-size: var(--font-size-xxl);
+}
 
-.text-muted { color: var(--color-text-muted); }
-.text-center { text-align: center; }
+h2 {
+  font-size: var(--font-size-xl);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+}
+
+h4 {
+  font-size: var(--font-size-base);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-center {
+  text-align: center;
+}
 
 /* ========================================
    Buttons
@@ -305,7 +342,9 @@ h4 { font-size: var(--font-size-base); }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ========================================
@@ -416,8 +455,13 @@ h4 { font-size: var(--font-size-base); }
 }
 
 @keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* ========================================
@@ -461,6 +505,15 @@ h4 { font-size: var(--font-size-base); }
 
 .form-group input::placeholder {
   color: var(--color-text-muted);
+}
+
+/* Room password input - display as masked characters without triggering password manager */
+input[name^="room-password"] {
+  -webkit-text-security: disc;
+  -moz-text-security: disc;
+  text-security: disc;
+  font-family: 'Arial', sans-serif;
+  letter-spacing: 2px;
 }
 
 /* ========================================
@@ -565,6 +618,45 @@ h4 { font-size: var(--font-size-base); }
   font-family: 'SF Mono', Monaco, 'Courier New', monospace;
   letter-spacing: 2px;
   color: var(--color-primary);
+}
+
+.room-password-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.room-password-display .label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.room-password-display .password {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+  letter-spacing: 3px;
+  color: var(--color-success);
+}
+
+.share-hint {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--spacing-sm);
+  font-style: italic;
+}
+
+.form-hint {
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  margin: var(--spacing-sm) 0;
 }
 
 .player-list-section {
@@ -1070,7 +1162,8 @@ h4 { font-size: var(--font-size-base); }
   color: var(--color-primary);
 }
 
-.rule-section ol, .rule-section ul {
+.rule-section ol,
+.rule-section ul {
   padding-left: var(--spacing-lg);
 }
 
@@ -1179,18 +1272,37 @@ h4 { font-size: var(--font-size-base); }
 }
 
 @keyframes toastIn {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes toastOut {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(-20px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
 }
 
 @keyframes toastProgress {
-  from { width: 100%; }
-  to { width: 0%; }
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
 }
 
 /* ========================================
@@ -1232,6 +1344,7 @@ h4 { font-size: var(--font-size-base); }
     opacity: 0;
     transform: scale(0.9) translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: scale(1) translateY(0);
@@ -1319,11 +1432,11 @@ h4 { font-size: var(--font-size-base); }
     --font-size-xl: 20px;
     --font-size-xxl: 28px;
   }
-  
+
   .app-title {
     font-size: 32px;
   }
-  
+
   .word-display {
     font-size: 28px;
   }
@@ -1334,16 +1447,16 @@ h4 { font-size: var(--font-size-base); }
   #app {
     padding: var(--spacing-lg);
   }
-  
+
   .page {
     padding: var(--spacing-lg);
   }
-  
+
   .home-actions {
     flex-direction: row;
     max-width: 400px;
   }
-  
+
   .home-actions .btn {
     flex: 1;
   }
@@ -1364,15 +1477,15 @@ h4 { font-size: var(--font-size-base); }
   .page {
     padding: var(--spacing-sm);
   }
-  
+
   #page-home .page-content {
     gap: var(--spacing-md);
   }
-  
+
   .app-header {
     margin-bottom: var(--spacing-sm);
   }
-  
+
   .word-reveal-card {
     padding: var(--spacing-md);
   }
@@ -1384,7 +1497,7 @@ h4 { font-size: var(--font-size-base); }
     --color-border: #000000;
     --color-text-muted: #333333;
   }
-  
+
   .btn {
     border: 2px solid currentColor;
   }
@@ -1392,7 +1505,10 @@ h4 { font-size: var(--font-size-base); }
 
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

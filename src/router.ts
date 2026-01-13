@@ -5,7 +5,7 @@
 import type { Env } from './index';
 import { createRoom, joinRoom } from './api/room';
 import { getRoomState } from './api/state';
-import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, submitVote, finalizeVoting, continueGame, restartGame } from './api/game';
+import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, submitVote, finalizeVoting, continueGame, restartGame, updateSettings, kickPlayer } from './api/game';
 
 export async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -31,45 +31,45 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       const status = result.success ? 200 : getErrorStatus(result.code);
       return jsonResponse(result, status, corsHeaders);
     }
-    
+
     if (path === '/api/room/join' && method === 'POST') {
       const result = await joinRoom(request, env);
       const status = result.success ? 200 : getErrorStatus(result.code);
       return jsonResponse(result, status, corsHeaders);
     }
-    
+
     // Room state route
     const stateMatch = path.match(/^\/api\/room\/([^/]+)\/state$/);
     if (stateMatch && method === 'GET') {
       const roomId = stateMatch[1];
       const token = url.searchParams.get('token');
-      
+
       if (!token) {
         return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
       }
-      
+
       const result = await getRoomState(roomId, token, env);
       const status = result.success ? 200 : getErrorStatus(result.code);
       return jsonResponse(result, status, corsHeaders);
     }
-    
+
     // Room action route
     const actionMatch = path.match(/^\/api\/room\/([^/]+)\/action$/);
     if (actionMatch && method === 'POST') {
       const roomId = actionMatch[1];
-      
+
       try {
         const body = await request.json() as { token: string; action: { type: string } };
         const { token, action } = body;
-        
+
         if (!token) {
           return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
         }
-        
+
         if (!action || !action.type) {
           return jsonResponse({ success: false, error: '缺少action参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
         }
-        
+
         // Handle different action types
         switch (action.type) {
           case 'start-game': {
@@ -122,6 +122,24 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
           }
           case 'restart-game': {
             const result = await restartGame(roomId, token, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'update-settings': {
+            const { settings } = action as { type: string; settings: { spyCount?: number } };
+            if (!settings) {
+              return jsonResponse({ success: false, error: '缺少设置参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
+            }
+            const result = await updateSettings(roomId, token, settings, env);
+            const status = result.success ? 200 : getErrorStatus(result.code);
+            return jsonResponse(result, status, corsHeaders);
+          }
+          case 'kick-player': {
+            const { playerId } = action as { type: string; playerId: string };
+            if (!playerId) {
+              return jsonResponse({ success: false, error: '缺少目标玩家ID', code: 'INVALID_INPUT' }, 400, corsHeaders);
+            }
+            const result = await kickPlayer(roomId, token, playerId, env);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }

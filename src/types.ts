@@ -78,7 +78,6 @@ export interface WordPairRow {
 
 // API Request/Response types
 export interface CreateRoomRequest {
-  password: string;
   playerName: string;
 }
 
@@ -86,6 +85,7 @@ export interface CreateRoomResponse {
   success: boolean;
   roomCode?: string;
   roomId?: string;
+  roomPassword?: string;
   playerToken?: string;
   error?: string;
   code?: ErrorCode;

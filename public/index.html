@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -8,6 +9,7 @@
   <title>谁是卧底</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <div id="app">
     <!-- Page Loader -->
@@ -61,10 +63,7 @@
             <label for="create-name">你的昵称</label>
             <input type="text" id="create-name" placeholder="2-10个字符" minlength="2" maxlength="10" required>
           </div>
-          <div class="form-group">
-            <label for="create-password">房间密码</label>
-            <input type="password" id="create-password" placeholder="4-8个字符" minlength="4" maxlength="8" required>
-          </div>
+          <p class="form-hint">房间密码将在创建后自动生成</p>
           <button type="submit" class="btn btn-primary btn-large">创建房间</button>
         </form>
       </div>
@@ -80,11 +79,13 @@
         <form id="form-join" class="form">
           <div class="form-group">
             <label for="join-code">房间号</label>
-            <input type="text" id="join-code" placeholder="6位数字" pattern="[0-9]{6}" maxlength="6" required inputmode="numeric">
+            <input type="text" id="join-code" placeholder="6位数字" pattern="[0-9]{6}" maxlength="6" required
+              inputmode="numeric">
           </div>
           <div class="form-group">
             <label for="join-password">房间密码</label>
-            <input type="password" id="join-password" placeholder="4-8个字符" minlength="4" maxlength="8" required>
+            <input type="text" id="join-password" name="room-password-join" placeholder="4-8个字符" minlength="4"
+              maxlength="8" required autocomplete="off" data-lpignore="true" data-form-type="other">
           </div>
           <div class="form-group">
             <label for="join-name">你的昵称</label>
@@ -108,6 +109,12 @@
             <span id="waiting-room-code" class="code">------</span>
             <button id="btn-copy-code" class="btn-icon" title="复制房间号">📋</button>
           </div>
+          <div class="room-password-display">
+            <span class="label">房间密码</span>
+            <span id="waiting-room-password" class="password">----</span>
+            <button id="btn-copy-password" class="btn-icon" title="复制密码">📋</button>
+          </div>
+          <p class="share-hint">分享房间号和密码给其他玩家</p>
         </div>
         <div class="player-list-section">
           <h3>玩家列表 (<span id="player-count">0</span>人)</h3>
@@ -269,4 +276,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

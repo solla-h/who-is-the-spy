@@ -14,19 +14,19 @@ class PageRouter {
   constructor() {
     /** @type {string} */
     this.currentPage = 'home';
-    
+
     /** @type {Object} */
     this.params = {};
-    
+
     /** @type {Map<string, HTMLElement>} */
     this.pages = new Map();
-    
+
     /** @type {Array<Function>} */
     this.listeners = [];
-    
+
     this._init();
   }
-  
+
   /**
    * Initialize the router
    * @private
@@ -37,13 +37,13 @@ class PageRouter {
       const id = page.id.replace('page-', '');
       this.pages.set(id, page);
     });
-    
+
     // Listen for hash changes
     window.addEventListener('hashchange', () => this._handleHashChange());
-    
+
     // Handle initial route
     this._handleHashChange();
-    
+
     // Setup back button handlers
     document.querySelectorAll('.btn-back').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -52,7 +52,7 @@ class PageRouter {
       });
     });
   }
-  
+
   /**
    * Handle hash change events
    * @private
@@ -60,7 +60,7 @@ class PageRouter {
   _handleHashChange() {
     const hash = window.location.hash.slice(1) || 'home';
     const [page, queryString] = hash.split('?');
-    
+
     // Parse query parameters
     this.params = {};
     if (queryString) {
@@ -69,10 +69,10 @@ class PageRouter {
         this.params[decodeURIComponent(key)] = decodeURIComponent(value || '');
       });
     }
-    
+
     this._showPage(page);
   }
-  
+
   /**
    * Show a specific page
    * @private
@@ -84,10 +84,23 @@ class PageRouter {
       console.warn(`Page "${pageName}" not found, redirecting to home`);
       pageName = 'home';
     }
-    
+
+    // Protected routes check
+    if (['waiting', 'game'].includes(pageName)) {
+      const session = loadSession();
+      if (!session.token || !session.roomId) {
+        console.warn(`Access to ${pageName} denied: No active session`);
+        // If we're not already redirecting, redirect to home
+        if (this.currentPage !== 'home') {
+          setTimeout(() => this.navigate('home'), 0);
+        }
+        return;
+      }
+    }
+
     const previousPage = this.currentPage;
     this.currentPage = pageName;
-    
+
     // Hide all pages
     this.pages.forEach((element, name) => {
       if (name === pageName) {
@@ -96,13 +109,13 @@ class PageRouter {
         element.classList.add('hidden');
       }
     });
-    
+
     // Notify listeners
     this.listeners.forEach(callback => {
       callback(pageName, previousPage, this.params);
     });
   }
-  
+
   /**
    * Navigate to a page
    * @param {string} page - Page name to navigate to
@@ -110,19 +123,19 @@ class PageRouter {
    */
   navigate(page, params = {}) {
     let hash = page;
-    
+
     // Build query string
     const queryParts = Object.entries(params)
       .filter(([_, value]) => value !== undefined && value !== null)
       .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-    
+
     if (queryParts.length > 0) {
       hash += '?' + queryParts.join('&');
     }
-    
+
     window.location.hash = hash;
   }
-  
+
   /**
    * Get current page name
    * @returns {string}
@@ -130,7 +143,7 @@ class PageRouter {
   getCurrentPage() {
     return this.currentPage;
   }
-  
+
   /**
    * Get current route parameters
    * @returns {Object}
@@ -138,7 +151,7 @@ class PageRouter {
   getParams() {
     return { ...this.params };
   }
-  
+
   /**
    * Add a page change listener
    * @param {Function} callback - Callback function(currentPage, previousPage, params)
@@ -146,7 +159,7 @@ class PageRouter {
   onPageChange(callback) {
     this.listeners.push(callback);
   }
-  
+
   /**
    * Remove a page change listener
    * @param {Function} callback - Callback to remove
@@ -200,13 +213,13 @@ class ApiClient {
    */
   async _request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const defaultOptions = {
       headers: {
         'Content-Type': 'application/json'
       }
     };
-    
+
     const mergedOptions = {
       ...defaultOptions,
       ...options,
@@ -215,7 +228,7 @@ class ApiClient {
         ...options.headers
       }
     };
-    
+
     try {
       const response = await fetch(url, mergedOptions);
       const data = await response.json();
@@ -232,14 +245,13 @@ class ApiClient {
 
   /**
    * Create a new game room
-   * @param {string} password - Room password (4-8 characters)
    * @param {string} playerName - Player display name (2-10 characters)
-   * @returns {Promise<{success: boolean, roomCode?: string, roomId?: string, playerToken?: string, error?: string, code?: string}>}
+   * @returns {Promise<{success: boolean, roomCode?: string, roomId?: string, roomPassword?: string, playerToken?: string, error?: string, code?: string}>}
    */
-  async createRoom(password, playerName) {
+  async createRoom(playerName) {
     return this._request('/api/room/create', {
       method: 'POST',
-      body: JSON.stringify({ password, playerName })
+      body: JSON.stringify({ playerName })
     });
   }
 
@@ -256,7 +268,7 @@ class ApiClient {
     if (playerToken) {
       body.playerToken = playerToken;
     }
-    
+
     return this._request('/api/room/join', {
       method: 'POST',
       body: JSON.stringify(body)
@@ -425,7 +437,7 @@ class ApiClient {
       [ErrorCode.DATABASE_ERROR]: '服务器错误，请稍后重试',
       'NETWORK_ERROR': '网络错误，请检查连接'
     };
-    
+
     return messages[code] || defaultMessage;
   }
 }
@@ -446,37 +458,37 @@ class GameStateManager {
   constructor(apiClient) {
     /** @type {ApiClient} */
     this.apiClient = apiClient;
-    
+
     /** @type {Object|null} */
     this.roomState = null;
-    
+
     /** @type {string|null} */
     this.roomId = null;
-    
+
     /** @type {string|null} */
     this.token = null;
-    
+
     /** @type {number|null} */
     this.pollingInterval = null;
-    
+
     /** @type {number} */
     this.pollIntervalMs = 2000; // 2 seconds as per requirements
-    
+
     /** @type {Array<Function>} */
     this.stateChangeListeners = [];
-    
+
     /** @type {Array<Function>} */
     this.connectionListeners = [];
-    
+
     /** @type {boolean} */
     this.isConnected = true;
-    
+
     /** @type {number} */
     this.consecutiveErrors = 0;
-    
+
     /** @type {number} */
     this.maxConsecutiveErrors = 3;
-    
+
     /** @type {boolean} */
     this.isPolling = false;
   }
@@ -489,15 +501,15 @@ class GameStateManager {
   startPolling(roomId, token) {
     // Stop any existing polling
     this.stopPolling();
-    
+
     this.roomId = roomId;
     this.token = token;
     this.isPolling = true;
     this.consecutiveErrors = 0;
-    
+
     // Fetch initial state immediately
     this._poll();
-    
+
     // Start polling interval
     this.pollingInterval = setInterval(() => {
       this._poll();
@@ -526,25 +538,28 @@ class GameStateManager {
     if (!this.roomId || !this.token) {
       return;
     }
-    
+
     try {
       const result = await this.apiClient.getRoomState(this.roomId, this.token);
-      
+
       if (result.success) {
         this.consecutiveErrors = 0;
         this._updateConnectionStatus(true);
         this._handleStateUpdate(result);
       } else {
         this.consecutiveErrors++;
-        
+
         // Handle specific error codes
         if (result.code === ErrorCode.ROOM_NOT_FOUND || result.code === ErrorCode.PLAYER_NOT_FOUND) {
-          // Room or player no longer exists, stop polling
-          this.stopPolling();
-          this._notifyStateChange(null, 'room_closed');
-          return;
+          // If we encounter "not found" errors, only treat as fatal after max retries
+          // This handles eventual consistency where room might not be visible immediately
+          if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+            this.stopPolling();
+            this._notifyStateChange(null, 'room_closed');
+            return;
+          }
         }
-        
+
         // Check for disconnect threshold
         if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
           this._updateConnectionStatus(false);
@@ -553,7 +568,7 @@ class GameStateManager {
     } catch (error) {
       console.error('Polling error:', error);
       this.consecutiveErrors++;
-      
+
       if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
         this._updateConnectionStatus(false);
       }
@@ -568,9 +583,9 @@ class GameStateManager {
   _handleStateUpdate(newState) {
     const previousState = this.roomState;
     const hasChanged = this._hasStateChanged(previousState, newState);
-    
+
     this.roomState = newState;
-    
+
     if (hasChanged) {
       this._notifyStateChange(newState, 'update');
     }
@@ -587,21 +602,21 @@ class GameStateManager {
     if (!oldState) {
       return true;
     }
-    
+
     // Compare key fields that indicate meaningful changes
     if (oldState.phase !== newState.phase) return true;
     if (oldState.currentTurn !== newState.currentTurn) return true;
     if (oldState.round !== newState.round) return true;
-    
+
     // Compare player count and status
     if (oldState.players?.length !== newState.players?.length) return true;
-    
+
     // Check for player status changes
     if (oldState.players && newState.players) {
       for (let i = 0; i < newState.players.length; i++) {
         const oldPlayer = oldState.players.find(p => p.id === newState.players[i].id);
         const newPlayer = newState.players[i];
-        
+
         if (!oldPlayer) return true;
         if (oldPlayer.isAlive !== newPlayer.isAlive) return true;
         if (oldPlayer.isOnline !== newPlayer.isOnline) return true;
@@ -609,16 +624,16 @@ class GameStateManager {
         if (oldPlayer.hasDescribed !== newPlayer.hasDescribed) return true;
       }
     }
-    
+
     // Check descriptions count
     if (oldState.descriptions?.length !== newState.descriptions?.length) return true;
-    
+
     // Check votes count
     if (oldState.votes?.length !== newState.votes?.length) return true;
-    
+
     // Check result changes
     if (JSON.stringify(oldState.result) !== JSON.stringify(newState.result)) return true;
-    
+
     return false;
   }
 
@@ -718,7 +733,7 @@ class GameStateManager {
     if (!this.roomId || !this.token) {
       return null;
     }
-    
+
     await this._poll();
     return this.roomState;
   }
@@ -750,7 +765,7 @@ const TOAST_ICONS = {
 function showToast(message, type = 'info', duration = 3000) {
   const container = document.getElementById('toast-container');
   if (!container) return;
-  
+
   // Limit maximum number of toasts to prevent overflow
   const maxToasts = 5;
   const existingToasts = container.querySelectorAll('.toast:not(.fade-out)');
@@ -759,30 +774,30 @@ function showToast(message, type = 'info', duration = 3000) {
     const oldestToast = existingToasts[0];
     dismissToast(oldestToast);
   }
-  
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.style.position = 'relative';
   toast.style.overflow = 'hidden';
-  
+
   // Create toast content with icon
   const icon = document.createElement('span');
   icon.className = 'toast-icon';
   icon.textContent = TOAST_ICONS[type] || TOAST_ICONS.info;
-  
+
   const messageSpan = document.createElement('span');
   messageSpan.className = 'toast-message';
   messageSpan.textContent = message;
-  
+
   const closeBtn = document.createElement('span');
   closeBtn.className = 'toast-close';
   closeBtn.textContent = '✕';
   closeBtn.setAttribute('aria-label', '关闭');
-  
+
   toast.appendChild(icon);
   toast.appendChild(messageSpan);
   toast.appendChild(closeBtn);
-  
+
   // Add progress bar for auto-dismiss
   if (duration > 0) {
     const progress = document.createElement('div');
@@ -790,19 +805,19 @@ function showToast(message, type = 'info', duration = 3000) {
     progress.style.animationDuration = `${duration}ms`;
     toast.appendChild(progress);
   }
-  
+
   container.appendChild(toast);
-  
+
   // Click to dismiss
   toast.addEventListener('click', () => dismissToast(toast));
-  
+
   // Auto remove after duration
   if (duration > 0) {
     setTimeout(() => {
       dismissToast(toast);
     }, duration);
   }
-  
+
   return toast;
 }
 
@@ -812,7 +827,7 @@ function showToast(message, type = 'info', duration = 3000) {
  */
 function dismissToast(toast) {
   if (!toast || toast.classList.contains('fade-out')) return;
-  
+
   toast.classList.add('fade-out');
   setTimeout(() => {
     if (toast.parentNode) {
@@ -827,7 +842,7 @@ function dismissToast(toast) {
 function clearAllToasts() {
   const container = document.getElementById('toast-container');
   if (!container) return;
-  
+
   const toasts = container.querySelectorAll('.toast');
   toasts.forEach(toast => dismissToast(toast));
 }
@@ -853,13 +868,13 @@ function showConfirmDialog(message, options = {}) {
     const messageEl = document.getElementById('confirm-message');
     const cancelBtn = document.getElementById('confirm-cancel');
     const okBtn = document.getElementById('confirm-ok');
-    
+
     if (!overlay || !messageEl || !cancelBtn || !okBtn) {
       // Fallback to native confirm if dialog elements not found
       resolve(window.confirm(message));
       return;
     }
-    
+
     // Set dialog content
     const {
       title = '确认操作',
@@ -868,57 +883,57 @@ function showConfirmDialog(message, options = {}) {
       cancelText = '取消',
       confirmDanger = false
     } = options;
-    
+
     // Set icon based on type
     const icons = {
       warning: '⚠',
       danger: '⚠',
       info: 'ℹ'
     };
-    
+
     if (iconEl) {
       iconEl.textContent = icons[type] || icons.warning;
       iconEl.className = `dialog-icon ${type}`;
     }
-    
+
     if (titleEl) {
       titleEl.textContent = title;
     }
-    
+
     messageEl.textContent = message;
     cancelBtn.textContent = cancelText;
     okBtn.textContent = confirmText;
-    
+
     // Set dialog box variant
     if (dialogBox) {
       dialogBox.className = `dialog-box ${type === 'danger' ? 'danger' : ''}`;
     }
-    
+
     // Set confirm button style
     okBtn.className = confirmDanger ? 'btn btn-danger' : 'btn btn-primary';
-    
+
     overlay.classList.remove('hidden');
-    
+
     // Focus the cancel button for safety (user must actively choose to confirm)
     cancelBtn.focus();
-    
+
     const cleanup = () => {
       overlay.classList.add('hidden');
       cancelBtn.removeEventListener('click', handleCancel);
       okBtn.removeEventListener('click', handleOk);
       document.removeEventListener('keydown', handleKeydown);
     };
-    
+
     const handleCancel = () => {
       cleanup();
       resolve(false);
     };
-    
+
     const handleOk = () => {
       cleanup();
       resolve(true);
     };
-    
+
     const handleKeydown = (e) => {
       if (e.key === 'Escape') {
         handleCancel();
@@ -929,7 +944,7 @@ function showConfirmDialog(message, options = {}) {
         }
       }
     };
-    
+
     cancelBtn.addEventListener('click', handleCancel);
     okBtn.addEventListener('click', handleOk);
     document.addEventListener('keydown', handleKeydown);
@@ -977,10 +992,10 @@ function showKickConfirmDialog(playerName) {
  */
 function setButtonLoading(button, loading, options = {}) {
   if (!button) return;
-  
+
   const { inline = false } = options;
   const loadingClass = inline ? 'loading-inline' : 'loading';
-  
+
   if (loading) {
     button.classList.add(loadingClass);
     button.disabled = true;
@@ -999,7 +1014,7 @@ function setButtonLoading(button, loading, options = {}) {
 function showPageLoader(message = '加载中...') {
   const loader = document.getElementById('page-loader');
   const loaderText = loader?.querySelector('.loader-text');
-  
+
   if (loader) {
     if (loaderText) {
       loaderText.textContent = message;
@@ -1014,7 +1029,7 @@ function showPageLoader(message = '加载中...') {
  */
 function hidePageLoader(animate = true) {
   const loader = document.getElementById('page-loader');
-  
+
   if (loader) {
     if (animate) {
       loader.classList.add('fade-out');
@@ -1048,13 +1063,13 @@ function createLoadingSpinner(size = 'medium') {
  */
 function showLoadingOverlay(element) {
   if (!element) return null;
-  
+
   // Ensure element has position for overlay
   const position = window.getComputedStyle(element).position;
   if (position === 'static') {
     element.style.position = 'relative';
   }
-  
+
   // Check if overlay already exists
   let overlay = element.querySelector('.loading-overlay');
   if (!overlay) {
@@ -1063,7 +1078,7 @@ function showLoadingOverlay(element) {
     overlay.appendChild(createLoadingSpinner('large'));
     element.appendChild(overlay);
   }
-  
+
   overlay.classList.remove('hidden');
   return overlay;
 }
@@ -1074,7 +1089,7 @@ function showLoadingOverlay(element) {
  */
 function hideLoadingOverlay(element) {
   if (!element) return;
-  
+
   const overlay = element.querySelector('.loading-overlay');
   if (overlay) {
     overlay.classList.add('hidden');
@@ -1131,6 +1146,9 @@ let currentRoomId = null;
 /** @type {string|null} */
 let currentRoomCode = null;
 
+/** @type {string|null} */
+let currentRoomPassword = null;
+
 // ========================================
 // Storage Helpers
 // ========================================
@@ -1143,37 +1161,40 @@ const STORAGE_KEY_ROOM = 'who-is-spy-room';
  * @param {string} token - Player token
  * @param {string} roomId - Room ID
  * @param {string} roomCode - Room code
+ * @param {string} [roomPassword] - Room password (optional, only for host)
  */
-function saveSession(token, roomId, roomCode) {
+function saveSession(token, roomId, roomCode, roomPassword = null) {
   playerToken = token;
   currentRoomId = roomId;
   currentRoomCode = roomCode;
-  
+  currentRoomPassword = roomPassword;
+
   localStorage.setItem(STORAGE_KEY_TOKEN, token);
-  localStorage.setItem(STORAGE_KEY_ROOM, JSON.stringify({ roomId, roomCode }));
+  localStorage.setItem(STORAGE_KEY_ROOM, JSON.stringify({ roomId, roomCode, roomPassword }));
 }
 
 /**
  * Load player session from localStorage
- * @returns {{ token: string|null, roomId: string|null, roomCode: string|null }}
+ * @returns {{ token: string|null, roomId: string|null, roomCode: string|null, roomPassword: string|null }}
  */
 function loadSession() {
   const token = localStorage.getItem(STORAGE_KEY_TOKEN);
   const roomData = localStorage.getItem(STORAGE_KEY_ROOM);
-  
+
   if (token && roomData) {
     try {
-      const { roomId, roomCode } = JSON.parse(roomData);
+      const { roomId, roomCode, roomPassword } = JSON.parse(roomData);
       playerToken = token;
       currentRoomId = roomId;
       currentRoomCode = roomCode;
-      return { token, roomId, roomCode };
+      currentRoomPassword = roomPassword || null;
+      return { token, roomId, roomCode, roomPassword: roomPassword || null };
     } catch (e) {
       clearSession();
     }
   }
-  
-  return { token: null, roomId: null, roomCode: null };
+
+  return { token: null, roomId: null, roomCode: null, roomPassword: null };
 }
 
 /**
@@ -1183,7 +1204,8 @@ function clearSession() {
   playerToken = null;
   currentRoomId = null;
   currentRoomCode = null;
-  
+  currentRoomPassword = null;
+
   localStorage.removeItem(STORAGE_KEY_TOKEN);
   localStorage.removeItem(STORAGE_KEY_ROOM);
 }
@@ -1201,17 +1223,17 @@ function setupEventHandlers() {
   document.getElementById('btn-create-room')?.addEventListener('click', () => {
     router.navigate('create');
   });
-  
+
   document.getElementById('btn-join-room')?.addEventListener('click', () => {
     router.navigate('join');
   });
-  
+
   // Create room form
   document.getElementById('form-create')?.addEventListener('submit', handleCreateRoom);
-  
+
   // Join room form
   document.getElementById('form-join')?.addEventListener('submit', handleJoinRoom);
-  
+
   // Copy room code button
   document.getElementById('btn-copy-code')?.addEventListener('click', async () => {
     if (currentRoomCode) {
@@ -1219,29 +1241,37 @@ function setupEventHandlers() {
       showToast(success ? '房间号已复制' : '复制失败', success ? 'success' : 'error');
     }
   });
-  
+
+  // Copy room password button
+  document.getElementById('btn-copy-password')?.addEventListener('click', async () => {
+    if (currentRoomPassword) {
+      const success = await copyToClipboard(currentRoomPassword);
+      showToast(success ? '密码已复制' : '复制失败', success ? 'success' : 'error');
+    }
+  });
+
   // Spy count controls
   document.getElementById('spy-decrease')?.addEventListener('click', handleSpyDecrease);
   document.getElementById('spy-increase')?.addEventListener('click', handleSpyIncrease);
-  
+
   // Start game button
   document.getElementById('btn-start-game')?.addEventListener('click', handleStartGame);
-  
+
   // Game controls - Word reveal phase
   document.getElementById('btn-confirm-word')?.addEventListener('click', handleConfirmWord);
-  
+
   // Description phase controls
   document.getElementById('form-description')?.addEventListener('submit', handleSubmitDescription);
   document.getElementById('btn-next-player')?.addEventListener('click', handleNextPlayer);
   document.getElementById('btn-start-voting')?.addEventListener('click', handleStartVoting);
-  
+
   // Game restart controls
   document.getElementById('btn-restart-game')?.addEventListener('click', handleRestartGame);
   document.getElementById('btn-restart-anytime')?.addEventListener('click', handleRestartGame);
-  
+
   // Result phase - continue game
   document.getElementById('btn-continue-game')?.addEventListener('click', handleContinueGame);
-  
+
   // Finalize voting (host only)
   document.getElementById('btn-finalize-voting')?.addEventListener('click', handleFinalizeVoting);
 }
@@ -1252,37 +1282,33 @@ function setupEventHandlers() {
  */
 async function handleCreateRoom(e) {
   e.preventDefault();
-  
+
   const nameInput = document.getElementById('create-name');
-  const passwordInput = document.getElementById('create-password');
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  
+
   const name = nameInput.value.trim();
-  const password = passwordInput.value;
-  
+
   // Validate inputs
   if (name.length < 2 || name.length > 10) {
     showToast('昵称需要2-10个字符', 'error');
     return;
   }
-  
-  if (password.length < 4 || password.length > 8) {
-    showToast('密码需要4-8个字符', 'error');
-    return;
-  }
-  
+
   setButtonLoading(submitBtn, true);
-  
+
   try {
-    const data = await apiClient.createRoom(password, name);
-    
+    const data = await apiClient.createRoom(name);
+
     if (data.success) {
-      saveSession(data.playerToken, data.roomId, data.roomCode);
+      // Save session with auto-generated password
+      saveSession(data.playerToken, data.roomId, data.roomCode, data.roomPassword);
       showToast('房间创建成功', 'success');
-      
-      // Start polling for room state
-      gameStateManager.startPolling(data.roomId, data.playerToken);
-      
+
+      // Start polling for room state with a small delay to handle consistency
+      setTimeout(() => {
+        gameStateManager.startPolling(data.roomId, data.playerToken);
+      }, 500);
+
       router.navigate('waiting');
     } else {
       showToast(apiClient.getErrorMessage(data.code, data.error), 'error');
@@ -1301,44 +1327,44 @@ async function handleCreateRoom(e) {
  */
 async function handleJoinRoom(e) {
   e.preventDefault();
-  
+
   const codeInput = document.getElementById('join-code');
   const passwordInput = document.getElementById('join-password');
   const nameInput = document.getElementById('join-name');
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  
+
   const roomCode = codeInput.value.trim();
   const password = passwordInput.value;
   const name = nameInput.value.trim();
-  
+
   // Validate inputs
   if (!/^\d{6}$/.test(roomCode)) {
     showToast('房间号需要6位数字', 'error');
     return;
   }
-  
+
   if (password.length < 4 || password.length > 8) {
     showToast('密码需要4-8个字符', 'error');
     return;
   }
-  
+
   if (name.length < 2 || name.length > 10) {
     showToast('昵称需要2-10个字符', 'error');
     return;
   }
-  
+
   setButtonLoading(submitBtn, true);
-  
+
   try {
     const data = await apiClient.joinRoom(roomCode, password, name);
-    
+
     if (data.success) {
       saveSession(data.playerToken, data.roomId, roomCode);
       showToast(data.isReconnect ? '重连成功' : '加入成功', 'success');
-      
+
       // Start polling for room state
       gameStateManager.startPolling(data.roomId, data.playerToken);
-      
+
       router.navigate('waiting');
     } else {
       showToast(apiClient.getErrorMessage(data.code, data.error), 'error');
@@ -1357,13 +1383,13 @@ async function handleJoinRoom(e) {
 async function handleSpyDecrease() {
   const state = gameStateManager.getState();
   if (!state || !state.isHost) return;
-  
+
   const currentCount = state.settings?.spyCount || 1;
   if (currentCount <= 1) {
     showToast('卧底数量最少为1', 'error');
     return;
   }
-  
+
   const newCount = currentCount - 1;
   await updateSpyCount(newCount);
 }
@@ -1374,16 +1400,16 @@ async function handleSpyDecrease() {
 async function handleSpyIncrease() {
   const state = gameStateManager.getState();
   if (!state || !state.isHost) return;
-  
+
   const currentCount = state.settings?.spyCount || 1;
   const playerCount = state.players?.length || 0;
-  
+
   // Spy count must be less than total players
   if (currentCount >= playerCount - 1) {
     showToast('卧底数量必须少于玩家总数', 'error');
     return;
   }
-  
+
   const newCount = currentCount + 1;
   await updateSpyCount(newCount);
 }
@@ -1394,9 +1420,9 @@ async function handleSpyIncrease() {
  */
 async function updateSpyCount(spyCount) {
   if (!currentRoomId || !playerToken) return;
-  
+
   const result = await apiClient.updateSettings(currentRoomId, playerToken, { spyCount });
-  
+
   if (result.success) {
     // Update display immediately
     const spyCountDisplay = document.getElementById('spy-count-display');
@@ -1416,28 +1442,28 @@ async function updateSpyCount(spyCount) {
 async function handleStartGame() {
   const state = gameStateManager.getState();
   if (!state || !state.isHost) return;
-  
+
   const playerCount = state.players?.length || 0;
   const spyCount = state.settings?.spyCount || 1;
-  
+
   // Validate player count
   if (playerCount < 3) {
     showToast('至少需要3名玩家才能开始游戏', 'error');
     return;
   }
-  
+
   // Validate spy count
   if (spyCount >= playerCount) {
     showToast('卧底数量必须少于玩家总数', 'error');
     return;
   }
-  
+
   const startBtn = document.getElementById('btn-start-game');
   if (startBtn) setButtonLoading(startBtn, true);
-  
+
   try {
     const result = await apiClient.startGame(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('游戏开始！', 'success');
       gameStateManager.refresh();
@@ -1460,16 +1486,16 @@ async function handleStartGame() {
 async function handleKickPlayer(playerId) {
   const state = gameStateManager.getState();
   if (!state || !state.isHost) return;
-  
+
   const player = state.players?.find(p => p.id === playerId);
   if (!player) return;
-  
+
   const confirmed = await showKickConfirmDialog(player.name);
   if (!confirmed) return;
-  
+
   try {
     const result = await apiClient.kickPlayer(currentRoomId, playerToken, playerId);
-    
+
     if (result.success) {
       showToast(`已踢出 ${player.name}`, 'success');
       gameStateManager.refresh();
@@ -1492,13 +1518,13 @@ async function handleKickPlayer(playerId) {
  */
 async function handleConfirmWord() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const btn = document.getElementById('btn-confirm-word');
   if (btn) setButtonLoading(btn, true);
-  
+
   try {
     const result = await apiClient.confirmWord(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('已确认', 'success');
       gameStateManager.refresh();
@@ -1520,23 +1546,23 @@ async function handleConfirmWord() {
  */
 async function handleSubmitDescription(e) {
   e.preventDefault();
-  
+
   if (!currentRoomId || !playerToken) return;
-  
+
   const input = document.getElementById('description-input');
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const text = input?.value?.trim();
-  
+
   if (!text || text.length < 5 || text.length > 50) {
     showToast('描述需要5-50个字符', 'error');
     return;
   }
-  
+
   if (submitBtn) setButtonLoading(submitBtn, true);
-  
+
   try {
     const result = await apiClient.submitDescription(currentRoomId, playerToken, text);
-    
+
     if (result.success) {
       showToast('描述已提交', 'success');
       if (input) input.value = '';
@@ -1558,13 +1584,13 @@ async function handleSubmitDescription(e) {
  */
 async function handleNextPlayer() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const btn = document.getElementById('btn-next-player');
   if (btn) setButtonLoading(btn, true);
-  
+
   try {
     const result = await apiClient.nextPlayer(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('已跳过当前玩家', 'success');
       gameStateManager.refresh();
@@ -1585,13 +1611,13 @@ async function handleNextPlayer() {
  */
 async function handleStartVoting() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const btn = document.getElementById('btn-start-voting');
   if (btn) setButtonLoading(btn, true);
-  
+
   try {
     const result = await apiClient.startVoting(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('投票开始', 'success');
       gameStateManager.refresh();
@@ -1612,13 +1638,13 @@ async function handleStartVoting() {
  */
 async function handleFinalizeVoting() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const btn = document.getElementById('btn-finalize-voting');
   if (btn) setButtonLoading(btn, true);
-  
+
   try {
     const result = await apiClient.finalizeVoting(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('投票结束', 'success');
       gameStateManager.refresh();
@@ -1639,13 +1665,13 @@ async function handleFinalizeVoting() {
  */
 async function handleContinueGame() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const btn = document.getElementById('btn-continue-game');
   if (btn) setButtonLoading(btn, true);
-  
+
   try {
     const result = await apiClient.continueGame(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('继续游戏', 'success');
       gameStateManager.refresh();
@@ -1666,13 +1692,13 @@ async function handleContinueGame() {
  */
 async function handleRestartGame() {
   if (!currentRoomId || !playerToken) return;
-  
+
   const confirmed = await showRestartConfirmDialog();
   if (!confirmed) return;
-  
+
   try {
     const result = await apiClient.restartGame(currentRoomId, playerToken);
-    
+
     if (result.success) {
       showToast('游戏已重置', 'success');
       gameStateManager.refresh();
@@ -1692,14 +1718,23 @@ async function handleRestartGame() {
  * @param {Object} params - Route parameters
  */
 function handlePageChange(currentPage, previousPage, params) {
-  // Update room code display when entering waiting room
-  if (currentPage === 'waiting' && currentRoomCode) {
-    const codeDisplay = document.getElementById('waiting-room-code');
-    if (codeDisplay) {
-      codeDisplay.textContent = currentRoomCode;
+  // Update room code and password display when entering waiting room
+  if (currentPage === 'waiting') {
+    if (currentRoomCode) {
+      const codeDisplay = document.getElementById('waiting-room-code');
+      if (codeDisplay) {
+        codeDisplay.textContent = currentRoomCode;
+      }
+    }
+    // Show password if available (host only)
+    if (currentRoomPassword) {
+      const passwordDisplay = document.getElementById('waiting-room-password');
+      if (passwordDisplay) {
+        passwordDisplay.textContent = currentRoomPassword;
+      }
     }
   }
-  
+
   // Clear forms when leaving create/join pages
   if (previousPage === 'create') {
     document.getElementById('form-create')?.reset();
@@ -1725,26 +1760,26 @@ function handleGameStateChange(state, reason) {
     router.navigate('home');
     return;
   }
-  
+
   if (!state) {
     return;
   }
-  
+
   // Update UI based on current page and game phase
   const currentPage = router.getCurrentPage();
-  
+
   // Navigate to appropriate page based on game phase
   if (state.phase === 'waiting' && currentPage !== 'waiting' && currentPage !== 'home' && currentPage !== 'create' && currentPage !== 'join') {
     router.navigate('waiting');
   } else if (state.phase !== 'waiting' && currentPage === 'waiting') {
     router.navigate('game');
   }
-  
+
   // Update waiting room UI
   if (currentPage === 'waiting') {
     updateWaitingRoomUI(state);
   }
-  
+
   // Update game UI
   if (currentPage === 'game') {
     updateGameUI(state);
@@ -1773,13 +1808,33 @@ function updateWaitingRoomUI(state) {
   if (codeDisplay) {
     codeDisplay.textContent = state.roomCode;
   }
-  
+
+  // Update room password display (only visible to host who has the password)
+  const passwordDisplaySection = document.querySelector('.room-password-display');
+  const shareHint = document.querySelector('.share-hint');
+  if (passwordDisplaySection) {
+    // Show password section only if we have a password (host)
+    if (currentRoomPassword) {
+      passwordDisplaySection.style.display = 'flex';
+      const passwordDisplay = document.getElementById('waiting-room-password');
+      if (passwordDisplay) {
+        passwordDisplay.textContent = currentRoomPassword;
+      }
+    } else {
+      // Hide for non-host players
+      passwordDisplaySection.style.display = 'none';
+    }
+  }
+  if (shareHint) {
+    shareHint.style.display = currentRoomPassword ? 'block' : 'none';
+  }
+
   // Update player count
   const playerCount = document.getElementById('player-count');
   if (playerCount && state.players) {
     playerCount.textContent = state.players.length;
   }
-  
+
   // Update player list
   const playerList = document.getElementById('player-list');
   if (playerList && state.players) {
@@ -1794,7 +1849,7 @@ function updateWaitingRoomUI(state) {
         ${state.isHost && !player.isHost ? `<button class="btn-icon btn-kick" data-player-id="${player.id}" title="踢出玩家">✕</button>` : ''}
       </li>
     `).join('');
-    
+
     // Add kick button handlers
     if (state.isHost) {
       playerList.querySelectorAll('.btn-kick').forEach(btn => {
@@ -1802,30 +1857,30 @@ function updateWaitingRoomUI(state) {
       });
     }
   }
-  
+
   // Update spy count display
   const spyCountDisplay = document.getElementById('spy-count-display');
   if (spyCountDisplay && state.settings) {
     spyCountDisplay.textContent = state.settings.spyCount;
   }
-  
+
   // Show/hide host controls
   const hostControls = document.getElementById('host-controls');
   const guestWaiting = document.getElementById('guest-waiting');
-  
+
   if (hostControls) {
     hostControls.classList.toggle('hidden', !state.isHost);
   }
   if (guestWaiting) {
     guestWaiting.classList.toggle('hidden', state.isHost);
   }
-  
+
   // Update start button state
   const startBtn = document.getElementById('btn-start-game');
   if (startBtn && state.isHost) {
     const canStart = state.players && state.players.length >= 3 && state.settings.spyCount < state.players.length;
     startBtn.disabled = !canStart;
-    
+
     // Update button text with player count info
     if (state.players.length < 3) {
       startBtn.textContent = `开始游戏 (需要${3 - state.players.length}人)`;
@@ -1843,7 +1898,7 @@ function updateGameUI(state) {
   // Update game header
   const phaseDisplay = document.getElementById('game-phase');
   const roundDisplay = document.getElementById('game-round');
-  
+
   if (phaseDisplay) {
     const phaseNames = {
       'word-reveal': '查看词语',
@@ -1854,20 +1909,20 @@ function updateGameUI(state) {
     };
     phaseDisplay.textContent = phaseNames[state.phase] || '游戏中';
   }
-  
+
   if (roundDisplay) {
     roundDisplay.textContent = state.round || 1;
   }
-  
+
   // Hide all game phase content
   document.querySelectorAll('.game-phase-content').forEach(el => el.classList.add('hidden'));
-  
+
   // Show current phase content
   const phaseElement = document.getElementById(`phase-${state.phase}`);
   if (phaseElement) {
     phaseElement.classList.remove('hidden');
   }
-  
+
   // Update phase-specific UI
   switch (state.phase) {
     case 'word-reveal':
@@ -1886,7 +1941,7 @@ function updateGameUI(state) {
       updateGameOverUI(state);
       break;
   }
-  
+
   // Show/hide host restart button (visible in all game phases except waiting)
   const hostRestartBtn = document.getElementById('host-restart-btn');
   if (hostRestartBtn) {
@@ -1904,7 +1959,7 @@ function updateWordRevealUI(state) {
   if (wordDisplay) {
     wordDisplay.textContent = state.myWord || '???';
   }
-  
+
   // The confirm button is always visible in this phase
   const confirmBtn = document.getElementById('btn-confirm-word');
   if (confirmBtn) {
@@ -1920,17 +1975,17 @@ function updateWordRevealUI(state) {
 function updateDescriptionUI(state) {
   // Get alive players in order
   const alivePlayers = state.players ? state.players.filter(p => p.isAlive) : [];
-  
+
   // Find current player based on turn
   const currentTurnIndex = state.currentTurn % alivePlayers.length;
   const currentPlayer = alivePlayers[currentTurnIndex];
-  
+
   // Update current player indicator
   const currentPlayerDisplay = document.getElementById('current-player-name');
   if (currentPlayerDisplay) {
     currentPlayerDisplay.textContent = currentPlayer ? currentPlayer.name : '---';
   }
-  
+
   // Update description history
   const descriptionList = document.getElementById('description-list');
   if (descriptionList) {
@@ -1945,13 +2000,13 @@ function updateDescriptionUI(state) {
       descriptionList.innerHTML = '<li class="empty-state">暂无描述记录</li>';
     }
   }
-  
+
   // Find my player info
   const myPlayer = state.players ? state.players.find(p => {
     // Check if this is the current player by comparing with state
     return state.isHost ? p.isHost : !p.isHost;
   }) : null;
-  
+
   // Determine if it's my turn - we need to find our player ID
   // Since we don't have direct access to myPlayerId, we check if we're the current player
   // by matching the current turn player with our position
@@ -1963,14 +2018,14 @@ function updateDescriptionUI(state) {
       // We are the player whose word we can see
       return state.myWord !== undefined;
     });
-    
+
     // Check if current player is us by comparing indices
     if (myIndex >= 0) {
       const myPlayerInfo = state.players[myIndex];
       isMyTurn = currentPlayer.id === myPlayerInfo?.id;
     }
   }
-  
+
   // Show/hide description input based on turn and alive status
   const myTurnInput = document.getElementById('my-turn-input');
   if (myTurnInput) {
@@ -1979,7 +2034,7 @@ function updateDescriptionUI(state) {
     const amIAlive = state.players ? state.players.some(p => p.isAlive && state.myWord) : false;
     myTurnInput.classList.toggle('hidden', !amIAlive);
   }
-  
+
   // Show/hide host game controls
   const hostGameControls = document.getElementById('host-game-controls');
   if (hostGameControls) {
@@ -1995,18 +2050,18 @@ function updateDescriptionUI(state) {
 function updateVotingUI(state) {
   const alivePlayers = state.players ? state.players.filter(p => p.isAlive) : [];
   const votedCount = alivePlayers.filter(p => p.hasVoted).length;
-  
+
   // Update voting progress
   const voteCountDisplay = document.getElementById('vote-count');
   const aliveCountDisplay = document.getElementById('alive-count');
   if (voteCountDisplay) voteCountDisplay.textContent = votedCount;
   if (aliveCountDisplay) aliveCountDisplay.textContent = alivePlayers.length;
-  
+
   // Check if current player has voted
   // We identify ourselves by checking who has our word
   let hasVoted = false;
   let myPlayerId = null;
-  
+
   // Find our player - we need to identify ourselves
   // Since we have myWord, we can find ourselves by checking the state
   if (state.players) {
@@ -2020,14 +2075,14 @@ function updateVotingUI(state) {
       }
     }
   }
-  
+
   // Update vote player list
   const voteList = document.getElementById('vote-player-list');
   if (voteList) {
     voteList.innerHTML = alivePlayers.map(player => {
       const isMe = player.id === myPlayerId;
       const canVote = !hasVoted && !isMe;
-      
+
       return `
         <li class="${isMe ? 'disabled' : ''} ${player.hasVoted ? 'voted' : ''}" 
             data-player-id="${player.id}"
@@ -2043,13 +2098,13 @@ function updateVotingUI(state) {
       `;
     }).join('');
   }
-  
+
   // Show/hide my vote status
   const myVoteStatus = document.getElementById('my-vote-status');
   if (myVoteStatus) {
     myVoteStatus.classList.toggle('hidden', !hasVoted);
   }
-  
+
   // Show/hide host finalize voting button
   const hostFinalizeBtn = document.getElementById('btn-finalize-voting');
   if (hostFinalizeBtn) {
@@ -2076,7 +2131,7 @@ function updateResultUI(state) {
         // Get the role - it should be revealed after elimination
         const roleText = eliminatedPlayer.role === 'spy' ? '卧底' : '平民';
         const roleClass = eliminatedPlayer.role === 'spy' ? 'spy' : 'civilian';
-        
+
         resultDisplay.innerHTML = `
           <div class="eliminated-player">
             <p class="eliminated-name">${escapeHtml(eliminatedPlayer.name)}</p>
@@ -2096,7 +2151,7 @@ function updateResultUI(state) {
       `;
     }
   }
-  
+
   // Show continue button for host
   const continueBtn = document.getElementById('btn-continue-game');
   if (continueBtn) {
@@ -2117,7 +2172,7 @@ function updateGameOverUI(state) {
     winnerAnnouncement.textContent = isCivilianWin ? '🎉 平民胜利！' : '🕵️ 卧底胜利！';
     winnerAnnouncement.className = isCivilianWin ? 'civilian-win' : 'spy-win';
   }
-  
+
   // Show all player roles
   const roleList = document.getElementById('role-reveal-list');
   if (roleList && state.players) {
@@ -2125,7 +2180,7 @@ function updateGameOverUI(state) {
       const roleText = player.role === 'spy' ? '卧底' : '平民';
       const roleClass = player.role === 'spy' ? 'spy' : 'civilian';
       const aliveStatus = player.isAlive ? '' : '（已淘汰）';
-      
+
       return `
         <li>
           <span class="player-name">${escapeHtml(player.name)}${aliveStatus}</span>
@@ -2134,18 +2189,18 @@ function updateGameOverUI(state) {
       `;
     }).join('');
   }
-  
+
   // Show words - these are now returned by the API after game over
   const civilianWordDisplay = document.getElementById('civilian-word');
   const spyWordDisplay = document.getElementById('spy-word');
-  
+
   if (civilianWordDisplay) {
     civilianWordDisplay.textContent = state.civilianWord || '---';
   }
   if (spyWordDisplay) {
     spyWordDisplay.textContent = state.spyWord || '---';
   }
-  
+
   // Show/hide host restart controls
   const hostRestartControls = document.getElementById('host-restart-controls');
   if (hostRestartControls) {
@@ -2162,26 +2217,26 @@ async function handleVote(targetId) {
   if (!currentRoomId || !playerToken) {
     return;
   }
-  
+
   // Find target player name for confirmation
   const state = gameStateManager.getState();
   const targetPlayer = state?.players?.find(p => p.id === targetId);
-  
+
   if (!targetPlayer) {
     showToast('无效的投票目标', 'error');
     return;
   }
-  
+
   // Confirm vote
   const confirmed = await showConfirmDialog(`确定投票给 "${targetPlayer.name}" 吗？`);
   if (!confirmed) return;
-  
+
   try {
     const result = await apiClient.vote(currentRoomId, playerToken, targetId);
-    
+
     if (result.success) {
       showToast('投票成功', 'success');
-      
+
       // Update my vote status display
       const myVoteStatus = document.getElementById('my-vote-status');
       const myVoteTarget = document.getElementById('my-vote-target');
@@ -2189,7 +2244,7 @@ async function handleVote(targetId) {
         myVoteTarget.textContent = targetPlayer.name;
         myVoteStatus.classList.remove('hidden');
       }
-      
+
       gameStateManager.refresh();
     } else {
       showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
@@ -2219,25 +2274,25 @@ async function tryReconnect(session) {
   if (!session.token || !session.roomId) {
     return;
   }
-  
+
   try {
     // Try to get room state with existing token
     const result = await apiClient.getRoomState(session.roomId, session.token);
-    
+
     if (result.success) {
       // Session is valid, start polling and navigate to appropriate page
       playerToken = session.token;
       currentRoomId = session.roomId;
       currentRoomCode = session.roomCode;
-      
+
       gameStateManager.startPolling(session.roomId, session.token);
-      
+
       if (result.phase === 'waiting') {
         router.navigate('waiting');
       } else {
         router.navigate('game');
       }
-      
+
       showToast('已恢复游戏会话', 'success');
     } else {
       // Session invalid, clear it
@@ -2254,25 +2309,25 @@ async function tryReconnect(session) {
  */
 function init() {
   console.log('谁是卧底 - Who is the Spy');
-  
+
   // Initialize API client
   apiClient = new ApiClient();
-  
+
   // Initialize game state manager
   gameStateManager = new GameStateManager(apiClient);
   gameStateManager.onStateChange(handleGameStateChange);
   gameStateManager.onConnectionChange(handleConnectionChange);
-  
+
   // Load existing session
   const session = loadSession();
-  
+
   // Initialize router
   router = new PageRouter();
   router.onPageChange(handlePageChange);
-  
+
   // Setup event handlers
   setupEventHandlers();
-  
+
   // If we have a session, try to reconnect
   if (session.token && session.roomId) {
     tryReconnect(session);
@@ -2287,7 +2342,7 @@ if (document.readyState === 'loading') {
 }
 
 // Make handleVoteClick globally accessible for onclick handlers
-window.handleVoteClick = function(element) {
+window.handleVoteClick = function (element) {
   const playerId = element.dataset.playerId;
   if (playerId) {
     handleVote(playerId);

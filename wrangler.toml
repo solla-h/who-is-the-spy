@@ -1,4 +1,4 @@
-name = "who-is-spy"
+name = "who-is-the-spy"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 
@@ -8,9 +8,20 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "who-is-spy-db"
-database_id = "local-dev-db"
+database_id = "8e112a36-6670-4293-a7fa-471953308220"
 
 # Scheduled trigger for room cleanup (runs every hour)
 # Requirements: 12.2 - Clean up rooms inactive for more than 24 hours
 [triggers]
 crons = ["0 * * * *"]
+
+# 自定义域名绑定（取消注释并替换为你的域名）
+# [env.production]
+# routes = [
+#   { pattern = "your-domain.com", custom_domain = true }
+# ]
+
+[observability]
+[observability.logs]
+enabled = false
+invocation_logs = true

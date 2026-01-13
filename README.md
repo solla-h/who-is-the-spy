@@ -179,7 +179,8 @@ crons = ["0 * * * *"]         # 每小时清理不活跃房间
 ### 创建房间
 ```
 POST /api/room/create
-Body: { "password": "1234", "playerName": "玩家1" }
+Body: { "playerName": "玩家1" }
+Response: { "success": true, "roomCode": "123456", "roomPassword": "AB3K", "playerToken": "xxx" }
 ```
 
 ### 加入房间

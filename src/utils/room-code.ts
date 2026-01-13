@@ -55,3 +55,23 @@ export async function generateUniqueRoomCode(
   }
   throw new Error('Failed to generate unique room code after maximum retries');
 }
+
+/**
+ * Generates a random 4-character room password.
+ * Uses only easily readable characters (no 0/O, 1/I/l confusion).
+ * 
+ * @returns A 4-character password string
+ * 
+ * This password is auto-generated to simplify user experience
+ * and ensure unique passwords for each room.
+ */
+export function generateRoomPassword(): string {
+  // Characters that are easy to read and share verbally
+  // Excludes: 0, O, 1, I, l to avoid confusion
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let password = '';
+  for (let i = 0; i < 4; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}

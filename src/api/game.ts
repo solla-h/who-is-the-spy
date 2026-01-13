@@ -247,11 +247,11 @@ export function isPlayerTurn(
   // Get alive players in order
   const alivePlayers = players.filter(p => p.is_alive === 1);
   if (alivePlayers.length === 0) return false;
-  
+
   // Normalize current turn to valid index
   const turnIndex = currentTurn % alivePlayers.length;
   const currentPlayer = alivePlayers[turnIndex];
-  
+
   return currentPlayer?.id === playerId;
 }
 
@@ -265,7 +265,7 @@ export function getNextTurn(
 ): number {
   const alivePlayers = players.filter(p => p.is_alive === 1);
   if (alivePlayers.length === 0) return 0;
-  
+
   return (currentTurn + 1) % alivePlayers.length;
 }
 
@@ -355,7 +355,7 @@ export async function submitDescription(
     // Save description record (Requirement 6.4)
     const descriptionId = crypto.randomUUID();
     const timestamp = Date.now();
-    
+
     await env.DB.prepare(`
       INSERT INTO descriptions (id, room_id, player_id, round, text, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -761,7 +761,7 @@ export interface VoteTallyResult {
 export function tallyVotes(votes: { targetId: string }[]): VoteTallyResult {
   // Count votes for each target
   const voteCounts = new Map<string, number>();
-  
+
   for (const vote of votes) {
     const currentCount = voteCounts.get(vote.targetId) || 0;
     voteCounts.set(vote.targetId, currentCount + 1);
@@ -897,8 +897,8 @@ export async function finalizeVoting(
     const tallyResult = tallyVotes(votes.map(v => ({ targetId: v.target_id })));
 
     // Parse current game state
-    const gameState: GameState = room.game_state 
-      ? JSON.parse(room.game_state) 
+    const gameState: GameState = room.game_state
+      ? JSON.parse(room.game_state)
       : { eliminatedPlayers: [], spyIds: [] };
 
     // Eliminate players with most votes (Requirement 7.5, 7.6)
@@ -931,7 +931,7 @@ export async function finalizeVoting(
     if (victoryResult.gameOver) {
       // Game over - set winner and transition to game-over phase (Requirement 8.3)
       gameState.winner = victoryResult.winner;
-      
+
       await env.DB.prepare(`
         UPDATE rooms SET 
           phase = 'game-over',
@@ -1181,4 +1181,191 @@ export function computeGameReset(input: GameResetInput): GameResetOutput {
     descriptionsCleared: true,
     votesCleared: true,
   };
+}
+
+/**
+ * Update game settings (host only, waiting phase only)
+ * Requirements: 4.2 - Host can configure spy count before starting
+ */
+export async function updateSettings(
+  roomId: string,
+  playerToken: string,
+  settings: Partial<GameSettings>,
+  env: Env
+): Promise<ActionResult> {
+  try {
+    // Get room
+    const room = await env.DB.prepare(`
+      SELECT * FROM rooms WHERE id = ?
+    `).bind(roomId).first<RoomRow>();
+
+    if (!room) {
+      return {
+        success: false,
+        error: '房间不存在',
+        code: ErrorCode.ROOM_NOT_FOUND,
+      };
+    }
+
+    // Verify player is host
+    const player = await env.DB.prepare(`
+      SELECT * FROM players WHERE token = ? AND room_id = ?
+    `).bind(playerToken, roomId).first<PlayerRow>();
+
+    if (!player) {
+      return {
+        success: false,
+        error: '玩家不存在',
+        code: ErrorCode.PLAYER_NOT_FOUND,
+      };
+    }
+
+    if (player.id !== room.host_id) {
+      return {
+        success: false,
+        error: '只有房主可以修改设置',
+        code: ErrorCode.NOT_AUTHORIZED,
+      };
+    }
+
+    // Check room phase - must be in waiting phase
+    if (room.phase !== 'waiting') {
+      return {
+        success: false,
+        error: '游戏已开始，无法修改设置',
+        code: ErrorCode.INVALID_PHASE,
+      };
+    }
+
+    // Parse current settings
+    const currentSettings: GameSettings = JSON.parse(room.settings);
+
+    // Merge new settings
+    const newSettings: GameSettings = {
+      ...currentSettings,
+      ...settings,
+    };
+
+    // Validate spy count
+    if (newSettings.spyCount < 1) {
+      return {
+        success: false,
+        error: '卧底数量至少为1',
+        code: ErrorCode.INVALID_INPUT,
+      };
+    }
+
+    // Update settings
+    const timestamp = Date.now();
+    await env.DB.prepare(`
+      UPDATE rooms SET settings = ?, updated_at = ? WHERE id = ?
+    `).bind(JSON.stringify(newSettings), timestamp, roomId).run();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Update settings error:', error);
+    return {
+      success: false,
+      error: '修改设置失败，请重试',
+      code: ErrorCode.DATABASE_ERROR,
+    };
+  }
+}
+
+/**
+ * Kick a player from the room (host only, waiting phase only)
+ * Requirements: 15.1, 15.4 - Host can kick players during waiting phase
+ */
+export async function kickPlayer(
+  roomId: string,
+  playerToken: string,
+  targetPlayerId: string,
+  env: Env
+): Promise<ActionResult> {
+  try {
+    // Get room
+    const room = await env.DB.prepare(`
+      SELECT * FROM rooms WHERE id = ?
+    `).bind(roomId).first<RoomRow>();
+
+    if (!room) {
+      return {
+        success: false,
+        error: '房间不存在',
+        code: ErrorCode.ROOM_NOT_FOUND,
+      };
+    }
+
+    // Verify player is host
+    const hostPlayer = await env.DB.prepare(`
+      SELECT * FROM players WHERE token = ? AND room_id = ?
+    `).bind(playerToken, roomId).first<PlayerRow>();
+
+    if (!hostPlayer) {
+      return {
+        success: false,
+        error: '玩家不存在',
+        code: ErrorCode.PLAYER_NOT_FOUND,
+      };
+    }
+
+    if (hostPlayer.id !== room.host_id) {
+      return {
+        success: false,
+        error: '只有房主可以踢出玩家',
+        code: ErrorCode.NOT_AUTHORIZED,
+      };
+    }
+
+    // Check room phase - must be in waiting phase
+    if (room.phase !== 'waiting') {
+      return {
+        success: false,
+        error: '游戏已开始，无法踢出玩家',
+        code: ErrorCode.INVALID_PHASE,
+      };
+    }
+
+    // Get target player
+    const targetPlayer = await env.DB.prepare(`
+      SELECT * FROM players WHERE id = ? AND room_id = ?
+    `).bind(targetPlayerId, roomId).first<PlayerRow>();
+
+    if (!targetPlayer) {
+      return {
+        success: false,
+        error: '目标玩家不存在',
+        code: ErrorCode.PLAYER_NOT_FOUND,
+      };
+    }
+
+    // Cannot kick self (host)
+    if (targetPlayerId === hostPlayer.id) {
+      return {
+        success: false,
+        error: '房主不能踢出自己',
+        code: ErrorCode.INVALID_ACTION,
+      };
+    }
+
+    // Delete the player
+    await env.DB.prepare(`
+      DELETE FROM players WHERE id = ?
+    `).bind(targetPlayerId).run();
+
+    // Update room timestamp
+    const timestamp = Date.now();
+    await env.DB.prepare(`
+      UPDATE rooms SET updated_at = ? WHERE id = ?
+    `).bind(timestamp, roomId).run();
+
+    return { success: true };
+  } catch (error) {
+    console.error('Kick player error:', error);
+    return {
+      success: false,
+      error: '踢出玩家失败，请重试',
+      code: ErrorCode.DATABASE_ERROR,
+    };
+  }
 }

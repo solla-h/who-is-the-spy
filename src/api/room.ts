@@ -15,7 +15,7 @@ import {
   GameSettings,
 } from '../types';
 import { validatePassword, validatePlayerName, validateRoomCode } from '../utils/validation';
-import { generateUniqueRoomCode } from '../utils/room-code';
+import { generateUniqueRoomCode, generateRoomPassword } from '../utils/room-code';
 import { hashPassword, verifyPassword } from '../utils/password';
 
 /**
@@ -58,16 +58,7 @@ export async function createRoom(
   try {
     // Parse request body
     const body = await request.json() as CreateRoomRequest;
-    const { password, playerName } = body;
-
-    // Validate password (Requirements 1.2)
-    if (!validatePassword(password)) {
-      return {
-        success: false,
-        error: '密码必须是4-8个字符',
-        code: ErrorCode.INVALID_INPUT,
-      };
-    }
+    const { playerName } = body;
 
     // Validate player name (Requirements 3.1, 3.4)
     if (!validatePlayerName(playerName)) {
@@ -77,6 +68,9 @@ export async function createRoom(
         code: ErrorCode.INVALID_INPUT,
       };
     }
+
+    // Auto-generate room password (4 characters, easy to read and share)
+    const password = generateRoomPassword();
 
     // Generate unique room code (Requirements 1.1)
     const roomCode = await generateUniqueRoomCode(env.DB);
@@ -90,30 +84,35 @@ export async function createRoom(
     const playerToken = generateUUID();
     const timestamp = now();
 
-    // Create room (Requirements 1.3, 1.4)
-    await env.DB.prepare(`
-      INSERT INTO rooms (id, code, password_hash, phase, host_id, settings, created_at, updated_at)
-      VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?)
-    `).bind(
-      roomId,
-      roomCode,
-      passwordHash,
-      playerId,
-      JSON.stringify(DEFAULT_SETTINGS),
-      timestamp,
-      timestamp
-    ).run();
+    // Batch execute room and player creation (Requirements 1.3, 1.4)
+    console.log(`Creating room ${roomId} (Code: ${roomCode}) for host ${playerId} (${playerName})`);
 
-    // Create host player
-    await env.DB.prepare(`
-      INSERT INTO players (id, room_id, token, name, last_seen, join_order)
-      VALUES (?, ?, ?, ?, ?, 0)
-    `).bind(playerId, roomId, playerToken, playerName, timestamp).run();
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO rooms (id, code, password_hash, phase, host_id, settings, created_at, updated_at)
+        VALUES (?, ?, ?, 'waiting', ?, ?, ?, ?)
+      `).bind(
+        roomId,
+        roomCode,
+        passwordHash,
+        playerId,
+        JSON.stringify(DEFAULT_SETTINGS),
+        timestamp,
+        timestamp
+      ),
+      env.DB.prepare(`
+        INSERT INTO players (id, room_id, token, name, last_seen, join_order)
+        VALUES (?, ?, ?, ?, ?, 0)
+      `).bind(playerId, roomId, playerToken, playerName, timestamp)
+    ]);
+
+    console.log('Room and host created successfully');
 
     return {
       success: true,
       roomCode,
       roomId,
+      roomPassword: password,
       playerToken,
     };
   } catch (error) {
@@ -249,22 +248,25 @@ export async function joinRoom(
     const newPlayerToken = generateUUID();
     const timestamp = now();
 
-    await env.DB.prepare(`
-      INSERT INTO players (id, room_id, token, name, last_seen, join_order)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-      newPlayerId,
-      room.id,
-      newPlayerToken,
-      playerName,
-      timestamp,
-      playerCount?.count ?? 0
-    ).run();
+    // Batch execute player creation and room update
+    console.log(`Adding player ${newPlayerId} (${playerName}) to room ${room.id}`);
 
-    // Update room timestamp
-    await env.DB.prepare(`
-      UPDATE rooms SET updated_at = ? WHERE id = ?
-    `).bind(timestamp, room.id).run();
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO players (id, room_id, token, name, last_seen, join_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(
+        newPlayerId,
+        room.id,
+        newPlayerToken,
+        playerName,
+        timestamp,
+        playerCount?.count ?? 0
+      ),
+      env.DB.prepare(`
+        UPDATE rooms SET updated_at = ? WHERE id = ?
+      `).bind(timestamp, room.id)
+    ]);
 
     return {
       success: true,
