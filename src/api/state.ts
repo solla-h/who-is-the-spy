@@ -131,7 +131,7 @@ export async function getRoomState(
       })),
       votes: room.phase === 'result' || room.phase === 'game-over'
         ? votes.map((v) => ({
-            oderId: v.voter_id,
+            voterId: v.voter_id,
             targetId: v.target_id,
             round: v.round,
           }))

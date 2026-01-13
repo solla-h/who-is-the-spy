@@ -128,7 +128,7 @@ export interface RoomStateResponse {
   currentTurn: number;
   round: number;
   descriptions: { playerId: string; playerName: string; text: string; round: number }[];
-  votes: { oderId: string; targetId: string; round: number }[];
+  votes: { voterId: string; targetId: string; round: number }[];
   result?: {
     eliminatedPlayerId?: string;
     winner?: 'civilian' | 'spy';
