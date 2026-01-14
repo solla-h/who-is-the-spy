@@ -560,11 +560,453 @@ h3 {
   border-color: rgba(255, 0, 60, 0.3);
 }
 
-.player-badge.offline {
-  font-size: 0.7rem;
+
+/* --- Home Page (Hero) --- */
+.hero-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 60px;
+}
+
+.app-header-cyber {
+  text-align: center;
+  margin-bottom: 60px;
+  position: relative;
+}
+
+.app-title-glitch {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 4px;
+  position: relative;
+  text-transform: uppercase;
+}
+
+/* Glitch Effect */
+.app-title-glitch::before,
+.app-title-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep);
+  /* Masking */
+}
+
+.app-title-glitch::before {
+  left: 2px;
+  text-shadow: -2px 0 var(--neon-red);
+  clip: rect(24px, 550px, 90px, 0);
+  animation: glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+.app-title-glitch::after {
+  left: -2px;
+  text-shadow: -2px 0 var(--neon-blue);
+  clip: rect(85px, 550px, 140px, 0);
+  animation: glitch-anim 2.5s infinite linear alternate-reverse;
+}
+
+@keyframes glitch-anim {
+  0% {
+    clip: rect(10px, 9999px, 30px, 0);
+    transform: skew(0.5deg);
+  }
+
+  20% {
+    clip: rect(80px, 9999px, 100px, 0);
+    transform: skew(-0.5deg);
+  }
+
+  100% {
+    clip: rect(10px, 9999px, 30px, 0);
+    transform: skew(0);
+  }
+}
+
+@keyframes glitch-anim-2 {
+  0% {
+    clip: rect(60px, 9999px, 90px, 0);
+    transform: skew(0.1deg);
+  }
+
+  20% {
+    clip: rect(10px, 9999px, 40px, 0);
+    transform: skew(-0.8deg);
+  }
+
+  100% {
+    clip: rect(60px, 9999px, 90px, 0);
+    transform: skew(0);
+  }
+}
+
+.app-subtitle-cyber {
+  font-family: var(--font-main);
+  color: var(--neon-purple);
+  letter-spacing: 6px;
+  font-size: 1rem;
+  margin-top: 12px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.home-actions-cyber {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  padding: 0 40px;
+}
+
+/* Hero Buttons */
+.btn-hero {
+  padding: 24px 0;
+  font-size: 1.3rem;
+  letter-spacing: 4px;
+}
+
+.btn-cyber-secondary {
+  position: relative;
+  width: 100%;
+  padding: 24px 0;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 4px;
+  cursor: pointer;
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  transition: all 0.3s;
+}
+
+.btn-cyber-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: #fff;
+  color: #fff;
+}
+
+.home-footer-cyber {
+  padding: 24px;
+  text-align: center;
+}
+
+.link-cyber {
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s;
+}
+
+.link-cyber:hover {
+  color: var(--neon-blue);
+}
+
+/* --- Forms (Cyber Style) --- */
+.form-card {
+  padding: 32px 24px;
+}
+
+.form-group-cyber {
+  margin-bottom: 24px;
+}
+
+.form-group-cyber label {
+  display: block;
+  font-family: var(--font-main);
+  color: var(--neon-blue);
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+/* Override default input reset */
+.form-cyber input[type="text"] {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-family: var(--font-main);
+  font-size: 1.2rem;
+  color: #fff;
+  padding: 12px 0;
+  outline: none;
+}
+
+/* Animated Line */
+.input-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s;
+}
+
+.form-cyber input[type="text"]:focus+.input-line {
+  background: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+.cyber-hint {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Button Block (Width 100%) */
+.btn-block {
+  width: 100%;
+}
+
+/* --- Game Page Specifics --- */
+.game-phase-badge {
+  font-family: var(--font-display);
+  color: var(--neon-blue);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-left: 12px;
+}
+
+.game-round-badge {
+  font-family: var(--font-main);
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+/* Word Card */
+.word-card {
+  text-align: center;
+  padding: 40px 20px;
+  margin-bottom: 24px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.word-label {
+  font-size: 0.9rem;
+  color: #aaa;
+  letter-spacing: 2px;
+}
+
+.word-display-glitch {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  color: #fff;
+  margin: 20px 0;
+  text-shadow: 0 0 15px var(--neon-blue);
+  animation: pulse-word 3s infinite;
+}
+
+@keyframes pulse-word {
+
+  0%,
+  100% {
+    text-shadow: 0 0 15px var(--neon-blue);
+  }
+
+  50% {
+    text-shadow: 0 0 25px var(--neon-blue), 0 0 40px var(--neon-purple);
+  }
+}
+
+.word-hint {
+  font-size: 0.8rem;
   color: var(--neon-red);
-  border: 1px solid var(--neon-red);
+  opacity: 0.8;
+}
+
+.status-card {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.highlight-name {
+  color: var(--neon-green);
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.card-title {
+  color: var(--neon-blue);
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+/* Small Cyber List */
+.cyber-list-small {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cyber-list-small li {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+}
+
+.cyber-list-small li span.player-name {
+  color: var(--neon-purple);
+  margin-right: 8px;
+}
+
+/* Vote List */
+.vote-list li {
+  cursor: pointer;
+}
+
+.vote-list li:hover {
+  background: rgba(0, 240, 255, 0.1);
+  border-color: var(--neon-blue);
+}
+
+.vote-list li.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vote-list li.voted {
+  background: rgba(57, 255, 20, 0.1);
+  border-color: var(--neon-green);
+}
+
+/* Results & Game Over */
+.elimination-result {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 1.2rem;
+  color: var(--neon-red);
+}
+
+.winner-title {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 30px;
+  color: var(--neon-green);
+  text-shadow: 0 0 10px var(--neon-green);
+}
+
+.word-reveal-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.2);
+  text-align: center;
+}
+
+.word-highlight {
+  color: var(--neon-blue);
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-left: 8px;
+}
+
+/* Small Button */
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+/* Rules Page */
+.rules-card {
+  padding: 24px;
+}
+
+.rule-section {
+  margin-bottom: 24px;
+}
+
+.rule-section h3 {
+  color: var(--neon-blue);
+  margin-bottom: 12px;
+}
+
+.rule-section li {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+}
+
+/* Refined Cyber List Small */
+.cyber-list-small li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Role Badges */
+.role-badge {
+  font-size: 0.8rem;
   padding: 2px 6px;
   border-radius: 4px;
-  margin-left: 8px;
+  text-transform: uppercase;
+}
+
+.role-badge.civilian {
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+}
+
+.role-badge.spy {
+  border: 1px solid var(--neon-purple);
+  color: var(--neon-purple);
+  background: rgba(188, 19, 254, 0.1);
+}
+
+/* Eliminated Text */
+.eliminated-name {
+  font-size: 1.5rem;
+  font-family: var(--font-display);
+  color: var(--neon-red);
+  margin-bottom: 8px;
+  text-shadow: 0 0 10px rgba(255, 0, 60, 0.5);
+}
+
+.eliminated-text {
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.no-elimination {
+  color: var(--neon-green);
+  opacity: 0.8;
+}
+
+/* Vote List Flex Fix */
+.vote-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+
+.voted-badge {
+  font-size: 0.7rem;
+  background: var(--neon-green);
+  color: #000;
+  padding: 2px 6px;
+  border-radius: 2px;
 }

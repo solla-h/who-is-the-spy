@@ -2216,7 +2216,8 @@ function updateVotingUI(state) {
     const allVoted = votedCount === alivePlayers.length;
     hostFinalizeBtn.classList.toggle('hidden', !state.isHost);
     if (state.isHost) {
-      hostFinalizeBtn.textContent = allVoted ? '结束投票' : '提前结束投票';
+      const btnText = hostFinalizeBtn.querySelector('.btn-text') || hostFinalizeBtn;
+      btnText.textContent = allVoted ? '结束投票' : '提前结束投票';
     }
   }
 }
@@ -2297,7 +2298,7 @@ function updateGameOverUI(state) {
       return `
         <li>
           <span class="player-name">${escapeHtml(player.name)}${aliveStatus}</span>
-          <span class="role ${roleClass}">${roleText}</span>
+          <span class="role-badge ${roleClass}">${roleText}</span>
         </li>
       `;
     }).join('');
