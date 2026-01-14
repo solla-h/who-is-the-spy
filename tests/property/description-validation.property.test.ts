@@ -23,6 +23,7 @@ function createMockPlayerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     role: 'civilian',
     is_alive: 1,
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: 0,
     ...overrides,
@@ -45,9 +46,9 @@ describe('Property 10: Description Validation', () => {
         (word, prefix, suffix) => {
           // Create a description that contains the word
           const descriptionWithWord = prefix + word + suffix;
-          
+
           // Only test if the description is within valid length range
-          if (descriptionWithWord.length >= 5 && descriptionWithWord.length <= 50) {
+          if (descriptionWithWord.length >= 2 && descriptionWithWord.length <= 50) {
             const result = validateDescription(descriptionWithWord, word);
             expect(result.valid).toBe(false);
             expect(result.error).toBe('描述不能包含你的词语');
@@ -67,8 +68,8 @@ describe('Property 10: Description Validation', () => {
       fc.property(
         // Generate a word that won't appear in the description
         fc.constant('特殊词语'),
-        // Generate description text (5-50 characters, using different characters)
-        fc.stringOf(fc.constantFrom(...'这是一个很好的东西我喜欢它非常有趣味道不错颜色漂亮'), { minLength: 5, maxLength: 50 }),
+        // Generate description text (2-50 characters, using different characters)
+        fc.stringOf(fc.constantFrom(...'这是一个很好的东西我喜欢它非常有趣味道不错颜色漂亮'), { minLength: 2, maxLength: 50 }),
         (word, description) => {
           // Only test if description doesn't contain the word
           if (!description.includes(word)) {
@@ -83,17 +84,17 @@ describe('Property 10: Description Validation', () => {
   });
 
   /**
-   * Property: For any description shorter than 5 characters, it should be rejected
+   * Property: For any description shorter than 2 characters, it should be rejected
    * Validates: Requirements 6.2
    */
-  it('should reject descriptions shorter than 5 characters', () => {
+  it('should reject descriptions shorter than 2 characters', () => {
     fc.assert(
       fc.property(
-        fc.stringOf(fc.char(), { minLength: 0, maxLength: 4 }),
+        fc.stringOf(fc.char(), { minLength: 0, maxLength: 1 }),
         (shortDescription) => {
           const result = validateDescription(shortDescription, '测试词');
           expect(result.valid).toBe(false);
-          expect(result.error).toBe('描述至少需要5个字符');
+          expect(result.error).toBe('描述至少需要2个字符');
         }
       ),
       { numRuns: 100 }
@@ -130,7 +131,7 @@ describe('Property 10: Description Validation', () => {
         (playerCount, currentTurn) => {
           // Create mock players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               join_order: i,
               is_alive: 1,
@@ -168,10 +169,10 @@ describe('Property 10: Description Validation', () => {
         (playerCount, eliminatedCount) => {
           // Ensure we don't eliminate more players than exist
           const actualEliminated = Math.min(eliminatedCount, playerCount - 1);
-          
+
           // Create mock players with some eliminated
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               join_order: i,
               is_alive: i >= actualEliminated ? 1 : 0, // First N players are eliminated
@@ -179,12 +180,12 @@ describe('Property 10: Description Validation', () => {
           );
 
           const alivePlayers = players.filter(p => p.is_alive === 1);
-          
+
           // For any turn index, only alive players should be considered
           for (let turn = 0; turn < alivePlayers.length; turn++) {
             const expectedPlayer = alivePlayers[turn];
             expect(isPlayerTurn(players, turn, expectedPlayer.id)).toBe(true);
-            
+
             // Eliminated players should never be the current turn
             for (let i = 0; i < actualEliminated; i++) {
               expect(isPlayerTurn(players, turn, players[i].id)).toBe(false);

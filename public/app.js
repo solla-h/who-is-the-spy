@@ -337,7 +337,7 @@ class ApiClient {
    * Submit a description
    * @param {string} roomId - Room ID
    * @param {string} token - Player token
-   * @param {string} text - Description text (5-50 characters)
+   * @param {string} text - Description text (2-50 characters)
    * @returns {Promise<{success: boolean, error?: string, code?: string}>}
    */
   async submitDescription(roomId, token, text) {
@@ -1539,7 +1539,7 @@ async function handleConfirmWord() {
   const state = gameStateManager.getState();
   const btn = document.getElementById('btn-confirm-word');
   const playerBtn = document.getElementById('btn-confirm-word-player');
-  
+
   if (state?.isHost) {
     // Host starts the description phase
     if (btn) setButtonLoading(btn, true);
@@ -1595,8 +1595,8 @@ async function handleSubmitDescription(e) {
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const text = input?.value?.trim();
 
-  if (!text || text.length < 5 || text.length > 50) {
-    showToast('描述需要5-50个字符', 'error');
+  if (!text || text.length < 2 || text.length > 50) {
+    showToast('描述需要2-50个字符', 'error');
     return;
   }
 
@@ -1810,7 +1810,7 @@ function handleGameStateChange(state, reason) {
 
   // Update UI based on current page and game phase
   const currentPage = router.getCurrentPage();
-  
+
   console.log('handleGameStateChange - phase:', state.phase, 'currentPage:', currentPage);
 
   // Navigate to appropriate page based on game phase
@@ -1948,13 +1948,13 @@ function updateWaitingRoomUI(state) {
 function updateGameUI(state) {
   console.log('updateGameUI called with state:', state);
   console.log('Current phase:', state.phase);
-  
+
   // Debug: Check if page-game is visible
   const gamePage = document.getElementById('page-game');
   console.log('Game page element:', gamePage);
   console.log('Game page classList:', gamePage?.className);
   console.log('Game page computed display:', gamePage ? window.getComputedStyle(gamePage).display : 'N/A');
-  
+
   // Update game header
   const phaseDisplay = document.getElementById('game-phase');
   const roundDisplay = document.getElementById('game-round');
@@ -1984,7 +1984,7 @@ function updateGameUI(state) {
   const phaseElementId = `phase-${state.phase}`;
   const phaseElement = document.getElementById(phaseElementId);
   console.log('Looking for phase element:', phaseElementId, 'Found:', phaseElement);
-  
+
   if (phaseElement) {
     console.log('Before removing hidden - classList:', phaseElement.className);
     phaseElement.classList.remove('hidden');
@@ -2042,7 +2042,7 @@ function updateWordRevealUI(state) {
   const playerConfirmBtn = document.getElementById('btn-confirm-word-player');
   const waitingHint = document.getElementById('word-reveal-waiting');
   const playerStatusList = document.getElementById('word-confirm-status');
-  
+
   if (state.isHost) {
     // Host sees the "Start Description" button and player status
     if (confirmBtn) {
@@ -2055,12 +2055,12 @@ function updateWordRevealUI(state) {
     if (waitingHint) {
       waitingHint.classList.add('hidden');
     }
-    
+
     // Show player confirmation status for host
     if (playerStatusList && state.players) {
       const confirmedCount = state.players.filter(p => p.hasConfirmedWord).length;
       const totalCount = state.players.length;
-      
+
       playerStatusList.innerHTML = `
         <p class="status-header">玩家就绪状态 (${confirmedCount}/${totalCount})</p>
         <ul class="player-status-list">
@@ -2082,7 +2082,7 @@ function updateWordRevealUI(state) {
     if (playerStatusList) {
       playerStatusList.classList.add('hidden');
     }
-    
+
     if (hasConfirmed) {
       // Already confirmed - show waiting message
       if (playerConfirmBtn) {
@@ -2231,7 +2231,7 @@ function updateResultUI(state) {
   const resultDisplay = document.getElementById('elimination-result');
   if (resultDisplay && state.result) {
     const eliminatedIds = state.result.eliminatedPlayerIds || [];
-    
+
     if (eliminatedIds.length > 0) {
       // Find all eliminated players
       const eliminatedPlayers = eliminatedIds

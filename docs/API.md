@@ -259,7 +259,7 @@
   "token": "playerToken",
   "action": {
     "type": "submit-description",
-    "text": "描述内容"           // 5-50个字符，不能包含自己的词语
+    "text": "描述内容"           // 2-50个字符，不能包含自己的词语
   }
 }
 ```

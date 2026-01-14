@@ -210,7 +210,7 @@ export async function startGame(
 /**
  * Validate description text
  * Requirements: 6.2, 6.8
- * - Description must be 5-50 characters
+ * - Description must be 2-50 characters
  * - Description must not contain the player's word
  */
 export function validateDescription(text: string, playerWord: string): { valid: boolean; error?: string } {
@@ -219,9 +219,9 @@ export function validateDescription(text: string, playerWord: string): { valid: 
     return { valid: false, error: '描述必须是文本' };
   }
 
-  // Check length (5-50 characters)
-  if (text.length < 5) {
-    return { valid: false, error: '描述至少需要5个字符' };
+  // Check length (2-50 characters)
+  if (text.length < 2) {
+    return { valid: false, error: '描述至少需要2个字符' };
   }
   if (text.length > 50) {
     return { valid: false, error: '描述不能超过50个字符' };
