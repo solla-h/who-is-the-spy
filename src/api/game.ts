@@ -249,6 +249,9 @@ export function getNextTurn(
 /**
  * Submit description action handler
  * Requirements: 6.1, 6.2, 6.4, 6.8
+ * 
+ * Race condition fix: Uses INSERT OR IGNORE with UNIQUE constraint
+ * to prevent duplicate descriptions atomically.
  */
 export async function submitDescription(
   roomId: string,
@@ -329,14 +332,24 @@ export async function submitDescription(
       };
     }
 
-    // Save description record (Requirement 6.4)
+    // Atomic insert with UNIQUE constraint (room_id, player_id, round)
+    // INSERT OR IGNORE returns changes=0 if duplicate, preventing race condition
     const descriptionId = crypto.randomUUID();
     const timestamp = Date.now();
 
-    await env.DB.prepare(`
-      INSERT INTO descriptions (id, room_id, player_id, round, text, created_at)
+    const insertResult = await env.DB.prepare(`
+      INSERT OR IGNORE INTO descriptions (id, room_id, player_id, round, text, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(descriptionId, roomId, player.id, room.round, text, timestamp).run();
+
+    // Check if insert was ignored due to UNIQUE constraint violation
+    if (insertResult.meta.changes === 0) {
+      return {
+        success: false,
+        error: '本轮已经提交过描述了',
+        code: ErrorCode.INVALID_ACTION,
+      };
+    }
 
     // Advance to next player
     const nextTurn = getNextTurn(players, room.current_turn);
@@ -589,6 +602,9 @@ export function validateVote(
 /**
  * Submit vote action handler
  * Requirements: 7.1, 7.2, 7.3
+ * 
+ * Race condition fix: Uses INSERT OR IGNORE with UNIQUE constraint
+ * to prevent duplicate votes atomically, instead of check-then-insert pattern.
  */
 export async function submitVote(
   roomId: string,
@@ -645,36 +661,50 @@ export async function submitVote(
       };
     }
 
-    // Check if voter has already voted this round
-    const existingVote = await env.DB.prepare(`
-      SELECT * FROM votes WHERE room_id = ? AND voter_id = ? AND round = ?
-    `).bind(roomId, voter.id, room.round).first<VoteRow>();
-
     // Validate vote (Requirements 7.1, 7.2, 7.3)
-    const validation = validateVote(
-      voter.id,
-      targetId,
-      voter.is_alive === 1,
-      target.is_alive === 1,
-      existingVote !== null
-    );
-
-    if (!validation.valid) {
+    // Note: hasAlreadyVoted check removed - DB constraint handles atomically
+    if (voter.is_alive !== 1) {
       return {
         success: false,
-        error: validation.error,
+        error: '已淘汰的玩家不能投票',
         code: ErrorCode.INVALID_ACTION,
       };
     }
 
-    // Save vote record
+    if (voter.id === targetId) {
+      return {
+        success: false,
+        error: '不能投票给自己',
+        code: ErrorCode.INVALID_ACTION,
+      };
+    }
+
+    if (target.is_alive !== 1) {
+      return {
+        success: false,
+        error: '不能投票给已淘汰的玩家',
+        code: ErrorCode.INVALID_ACTION,
+      };
+    }
+
+    // Atomic insert with UNIQUE constraint (room_id, voter_id, round)
+    // INSERT OR IGNORE returns changes=0 if duplicate, preventing race condition
     const voteId = crypto.randomUUID();
     const timestamp = Date.now();
 
-    await env.DB.prepare(`
-      INSERT INTO votes (id, room_id, voter_id, target_id, round, created_at)
+    const insertResult = await env.DB.prepare(`
+      INSERT OR IGNORE INTO votes (id, room_id, voter_id, target_id, round, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).bind(voteId, roomId, voter.id, targetId, room.round, timestamp).run();
+
+    // Check if insert was ignored due to UNIQUE constraint violation
+    if (insertResult.meta.changes === 0) {
+      return {
+        success: false,
+        error: '本轮已经投过票了',
+        code: ErrorCode.INVALID_ACTION,
+      };
+    }
 
     // Update room timestamp
     await env.DB.prepare(`
