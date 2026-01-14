@@ -13,6 +13,7 @@ import {
   GameState,
   ErrorCode,
 } from '../types';
+import { authenticateAction } from '../utils/auth';
 
 interface ActionResult {
   success: boolean;
@@ -78,48 +79,24 @@ export async function startGame(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify waiting phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['waiting'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      // Override generic error messages with specific ones
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以开始游戏', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '游戏已经开始', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以开始游戏',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase
-    if (room.phase !== 'waiting') {
-      return {
-        success: false,
-        error: '游戏已经开始',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { room } = auth.context;
 
     // Get all players in room
     const playersResult = await env.DB.prepare(`
@@ -390,48 +367,23 @@ export async function skipPlayer(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify description phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['description'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以跳过玩家', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是描述阶段', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以跳过玩家',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in description phase
-    if (room.phase !== 'description') {
-      return {
-        success: false,
-        error: '当前不是描述阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { room } = auth.context;
 
     // Get all players
     const playersResult = await env.DB.prepare(`
@@ -468,47 +420,20 @@ export async function startVoting(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify description phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['description'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
-    }
-
-    // Verify player is host
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以开始投票',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in description phase
-    if (room.phase !== 'description') {
-      return {
-        success: false,
-        error: '当前不是描述阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以开始投票', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是描述阶段', code: auth.code };
+      }
+      return auth;
     }
 
     // Transition to voting phase
@@ -539,48 +464,20 @@ export async function confirmWord(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify word-reveal phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['word-reveal'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
-    }
-
-    // Check room phase - must be in word-reveal phase
-    if (room.phase !== 'word-reveal') {
-      return {
-        success: false,
-        error: '当前不是查看词语阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
-
-    // Verify player exists
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    // Only host can start the description phase
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以开始描述阶段',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以开始描述阶段', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是查看词语阶段', code: auth.code };
+      }
+      return auth;
     }
 
     // Transition to description phase and reset word_confirmed for all players
@@ -615,40 +512,19 @@ export async function confirmWordPlayer(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate player and verify word-reveal phase (no host requirement)
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      allowedPhases: ['word-reveal'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是查看词语阶段', code: auth.code };
+      }
+      return auth;
     }
 
-    // Check room phase - must be in word-reveal phase
-    if (room.phase !== 'word-reveal') {
-      return {
-        success: false,
-        error: '当前不是查看词语阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
-
-    // Verify player exists
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
+    const { player } = auth.context;
 
     // Mark player as having confirmed their word
     const timestamp = Date.now();
@@ -920,48 +796,23 @@ export async function finalizeVoting(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify voting phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['voting'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以结束投票', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是投票阶段', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host (only host can finalize voting)
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以结束投票',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in voting phase
-    if (room.phase !== 'voting') {
-      return {
-        success: false,
-        error: '当前不是投票阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { room } = auth.context;
 
     // Get all votes for current round
     const votesResult = await env.DB.prepare(`
@@ -971,6 +822,7 @@ export async function finalizeVoting(
 
     console.log(`Finalizing voting for room ${roomId}, round ${room.round}, votes count: ${votes.length}`);
     console.log('Votes:', JSON.stringify(votes.map(v => ({ voter: v.voter_id, target: v.target_id }))));
+
 
     // Tally votes (Requirements 7.4, 7.5, 7.6)
     const tallyResult = tallyVotes(votes.map(v => ({ targetId: v.target_id })));
@@ -1060,48 +912,23 @@ export async function continueGame(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify result phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['result'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以继续游戏', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '当前不是结算阶段', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以继续游戏',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in result phase
-    if (room.phase !== 'result') {
-      return {
-        success: false,
-        error: '当前不是结算阶段',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { room } = auth.context;
 
     // Transition back to description phase for next round
     const timestamp = Date.now();
@@ -1142,38 +969,17 @@ export async function restartGame(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host (Requirement 15.1 - only host can restart)
+    // Note: restartGame can be called from any phase, so no phase restriction
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
-    }
-
-    // Verify player is host (Requirement 15.1 - only host can restart)
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以重新开始游戏',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以重新开始游戏', code: auth.code };
+      }
+      return auth;
     }
 
     const timestamp = Date.now();
@@ -1283,48 +1089,23 @@ export async function updateSettings(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify waiting phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['waiting'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以修改设置', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '游戏已开始，无法修改设置', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host
-    const player = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!player) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (player.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以修改设置',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in waiting phase
-    if (room.phase !== 'waiting') {
-      return {
-        success: false,
-        error: '游戏已开始，无法修改设置',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { room } = auth.context;
 
     // Parse current settings
     const currentSettings: GameSettings = JSON.parse(room.settings);
@@ -1372,48 +1153,23 @@ export async function kickPlayer(
   env: Env
 ): Promise<ActionResult> {
   try {
-    // Get room
-    const room = await env.DB.prepare(`
-      SELECT * FROM rooms WHERE id = ?
-    `).bind(roomId).first<RoomRow>();
+    // Authenticate host and verify waiting phase
+    const auth = await authenticateAction(roomId, playerToken, env, {
+      requireHost: true,
+      allowedPhases: ['waiting'],
+    });
 
-    if (!room) {
-      return {
-        success: false,
-        error: '房间不存在',
-        code: ErrorCode.ROOM_NOT_FOUND,
-      };
+    if (!auth.success || !auth.context) {
+      if (auth.code === ErrorCode.NOT_AUTHORIZED) {
+        return { success: false, error: '只有房主可以踢出玩家', code: auth.code };
+      }
+      if (auth.code === ErrorCode.INVALID_PHASE) {
+        return { success: false, error: '游戏已开始，无法踢出玩家', code: auth.code };
+      }
+      return auth;
     }
 
-    // Verify player is host
-    const hostPlayer = await env.DB.prepare(`
-      SELECT * FROM players WHERE token = ? AND room_id = ?
-    `).bind(playerToken, roomId).first<PlayerRow>();
-
-    if (!hostPlayer) {
-      return {
-        success: false,
-        error: '玩家不存在',
-        code: ErrorCode.PLAYER_NOT_FOUND,
-      };
-    }
-
-    if (hostPlayer.id !== room.host_id) {
-      return {
-        success: false,
-        error: '只有房主可以踢出玩家',
-        code: ErrorCode.NOT_AUTHORIZED,
-      };
-    }
-
-    // Check room phase - must be in waiting phase
-    if (room.phase !== 'waiting') {
-      return {
-        success: false,
-        error: '游戏已开始，无法踢出玩家',
-        code: ErrorCode.INVALID_PHASE,
-      };
-    }
+    const { player: hostPlayer } = auth.context;
 
     // Get target player
     const targetPlayer = await env.DB.prepare(`
