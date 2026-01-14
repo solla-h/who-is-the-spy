@@ -1890,13 +1890,10 @@ function updateWaitingRoomUI(state) {
   const playerList = document.getElementById('player-list');
   if (playerList && state.players) {
     playerList.innerHTML = state.players.map(player => `
-      <li>
-        <div class="player-info">
-          <span class="player-status ${player.isOnline ? '' : 'offline'}"></span>
-          <span class="player-name">${escapeHtml(player.name)}</span>
-          ${player.isHost ? '<span class="host-badge">HOST</span>' : ''}
-          ${!player.isOnline ? '<span class="player-badge offline">OFFLINE</span>' : ''}
-        </div>
+      <li class="${!player.isOnline ? 'offline' : ''}">
+        <span class="player-name">${escapeHtml(player.name)}</span>
+        ${player.isHost ? '<span class="host-badge">房主</span>' : ''}
+        ${!player.isOnline ? '<span class="player-badge offline">OFFLINE</span>' : ''}
         ${state.isHost && !player.isHost ? `<button class="btn-icon btn-kick" data-player-id="${player.id}" title="踢出玩家">✕</button>` : ''}
       </li>
     `).join('');
@@ -1933,10 +1930,12 @@ function updateWaitingRoomUI(state) {
     startBtn.disabled = !canStart;
 
     // Update button text with player count info
+    // Safe update of button text to preserve internal structure
+    const btnText = startBtn.querySelector('.btn-text') || startBtn;
     if (state.players.length < 3) {
-      startBtn.textContent = `开始游戏 (需要${3 - state.players.length}人)`;
+      btnText.textContent = `开始游戏 (需要${3 - state.players.length}人)`;
     } else {
-      startBtn.textContent = '开始游戏';
+      btnText.textContent = '开始游戏';
     }
   }
 }

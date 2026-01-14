@@ -103,42 +103,98 @@
 
     <!-- Page: Waiting Room -->
     <div id="page-waiting" class="page hidden">
-      <div class="page-content">
-        <header class="page-header">
-          <button class="btn-back" data-back="home">←</button>
-          <h2>等待中</h2>
+      <div class="page-container-flex">
+        <header class="nav-bar">
+          <button class="btn-nav-back" data-back="home">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+          <h2 class="nav-title">等待中</h2>
         </header>
-        <div class="room-info">
-          <div class="room-code-display">
-            <span class="label">房间号</span>
-            <span id="waiting-room-code" class="code">------</span>
-            <button id="btn-copy-code" class="btn-icon" title="复制房间号">📋</button>
-          </div>
-          <div class="room-password-display">
-            <span class="label">房间密码</span>
-            <span id="waiting-room-password" class="password">----</span>
-            <button id="btn-copy-password" class="btn-icon" title="复制密码">📋</button>
-          </div>
-          <p class="share-hint">分享房间号和密码给其他玩家</p>
-        </div>
-        <div class="player-list-section">
-          <h3>玩家列表 (<span id="player-count">0</span>人)</h3>
-          <ul id="player-list" class="player-list"></ul>
-        </div>
-        <div id="host-controls" class="host-controls hidden">
-          <div class="settings-group">
-            <label for="spy-count">卧底数量</label>
-            <div class="number-input">
-              <button id="spy-decrease" class="btn-icon">−</button>
-              <span id="spy-count-display">1</span>
-              <button id="spy-increase" class="btn-icon">+</button>
+
+        <div class="content-scroll">
+          <!-- Room Info Card -->
+          <div class="cyber-card room-hud">
+            <!-- Tech decorations -->
+            <div class="hud-corner top-left"></div>
+            <div class="hud-corner top-right"></div>
+            <div class="hud-corner bottom-right"></div>
+            <div class="hud-lines"></div>
+
+            <div class="hud-row main-row">
+              <span class="hud-label">房间号</span>
+              <div class="hud-value-wrapper">
+                <span id="waiting-room-code" class="hud-value code-lg">------</span>
+                <button id="btn-copy-code" class="btn-icon-copy" title="复制">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  </svg>
+                </button>
+              </div>
             </div>
+
+            <div class="hud-row sub-row">
+              <div class="tech-connector"></div>
+              <span class="hud-label">房间密码</span>
+              <div class="hud-value-wrapper">
+                <span id="waiting-room-password" class="hud-value pass-md">----</span>
+                <button id="btn-copy-password" class="btn-icon-copy" title="复制">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <p class="hud-footer">分享房间号和密码给其他玩家</p>
           </div>
-          <button id="btn-start-game" class="btn btn-primary btn-large">开始游戏</button>
+
+          <!-- Player List -->
+          <div class="player-section">
+            <h3 class="section-title">玩家列表 (<span id="player-count">0</span>人)</h3>
+            <ul id="player-list" class="cyber-list">
+              <!-- JS Injected items will look like: 
+              <li class="player-item">
+                 <div class="p-status"></div>
+                 <span class="p-name">Data</span>
+                 <span class="p-role">房主</span>
+              </li> -->
+            </ul>
+          </div>
         </div>
-        <div id="guest-waiting" class="guest-waiting">
-          <p>等待房主开始游戏...</p>
+
+        <!-- Bottom Controls (Fixed) -->
+        <div class="bottom-dock-wrapper">
+          <div id="host-controls" class="host-controls hidden">
+            <!-- Spy Count Control -->
+            <div class="glass-panel control-row">
+              <span class="control-label">卧底数量</span>
+              <div class="stepper-cyber">
+                <button id="spy-decrease" class="btn-step">−</button>
+                <div class="step-display-box">
+                  <span id="spy-count-display">1</span>
+                </div>
+                <button id="spy-increase" class="btn-step">+</button>
+              </div>
+            </div>
+
+            <!-- Start Button -->
+            <button id="btn-start-game" class="btn-cyber-primary btn-block">
+              <div class="btn-content">
+                <span class="btn-text">开始游戏 (需要2人)</span>
+              </div>
+              <div class="btn-glow"></div>
+            </button>
+          </div>
+
+          <div id="guest-waiting" class="guest-waiting">
+            <div class="waiting-text-glitch">等待房主开始游戏...</div>
+          </div>
         </div>
+
       </div>
     </div>
 

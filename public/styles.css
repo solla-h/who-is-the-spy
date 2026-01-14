@@ -1,513 +1,570 @@
 :root {
-  /* --- Cyberpunk Palette --- */
-  --bg-body: #050510;
-  --bg-grid: rgba(0, 243, 255, 0.03);
-  --bg-card: rgba(26, 26, 46, 0.85);
+  /* --- Cyberpunk Palette (High Fidelity) --- */
+  --bg-deep: #02020b;
+  --bg-panel: #0a0b1e;
 
-  --primary-cyan: #00F3FF;
-  --primary-purple: #BC13FE;
-  --alert-red: #FF0055;
-  --matrix-green: #39FF14;
+  --neon-blue: #00f0ff;
+  --neon-green: #39ff14;
+  --neon-purple: #bc13fe;
+  --neon-red: #ff003c;
 
-  --text-main: #E0E0E0;
-  --text-dim: #707090;
+  --glass-border: rgba(0, 240, 255, 0.3);
+  --glass-bg: rgba(0, 10, 30, 0.6);
 
-  /* --- Spacing & sizing --- */
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+  --font-main: 'Roboto Mono', monospace;
+  --font-display: 'Orbitron', -apple-system, sans-serif;
 
-  /* --- Fonts --- */
-  --font-display: 'Orbitron', sans-serif;
-  --font-mono: 'Roboto Mono', monospace;
+  /* Layout Z-indexes */
+  --z-bg: -1;
+  --z-content: 10;
+  --z-nav: 100;
+  --z-modal: 1000;
 }
 
-/* --- Global Reset & Base --- */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  /* Prevent tap highlight on mobile */
   -webkit-tap-highlight-color: transparent;
 }
 
 body {
-  font-family: var(--font-mono);
-  background-color: var(--bg-body);
-  color: var(--text-main);
-  line-height: 1.5;
-  overflow-x: hidden;
+  font-family: var(--font-main);
+  background-color: var(--bg-deep);
+  color: #fff;
   height: 100vh;
-  /* Grid Background Effect */
+  overflow: hidden;
+  /* App-like feel */
+
+  /* Complex Grid Background */
   background-image:
-    linear-gradient(var(--bg-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-  background-size: 30px 30px;
+    linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-/* Scanline Overlay */
+/* Vignette & Scanlines */
 body::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: linear-gradient(to bottom,
-      rgba(255, 255, 255, 0),
-      rgba(255, 255, 255, 0) 50%,
-      rgba(0, 0, 0, 0.1) 50%,
-      rgba(0, 0, 0, 0.1));
-  background-size: 100% 4px;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0%, #000 120%);
   pointer-events: none;
-  z-index: 9999;
-  opacity: 0.3;
+  z-index: var(--z-bg);
 }
 
-/* --- Typography --- */
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-
-/* --- App Container --- */
-#app {
-  max-width: 600px;
-  margin: 0 auto;
-  min-height: 100vh;
-  position: relative;
-  border-left: 1px solid rgba(0, 243, 255, 0.1);
-  border-right: 1px solid rgba(0, 243, 255, 0.1);
-  background: radial-gradient(circle at center, rgba(188, 19, 254, 0.03) 0%, transparent 70%);
-}
-
-/* --- Page Structure --- */
-.page {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-}
-
-.page-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.centered-content {
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-/* --- Utility: Hidden --- */
+/* --- Common Util --- */
 .hidden {
   display: none !important;
 }
 
-/* --- Components: Buttons (Chamfered) --- */
-.btn {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.1rem;
-  padding: var(--space-md) var(--space-xl);
-  border: none;
-  background: transparent;
-  color: var(--primary-cyan);
-  cursor: pointer;
-  position: relative;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: all 0.2s;
-
-  /* Chamfered corners */
-  clip-path: polygon(15px 0, 100% 0,
-      100% calc(100% - 15px), calc(100% - 15px) 100%,
-      0 100%, 0 15px);
-
-  /* Simulated border via box-shadow (inset) or background trick? 
-     Clip-path hides borders. So we use a pseudo-element for background/border.
-  */
-  background: rgba(0, 243, 255, 0.1);
-  box-shadow: inset 0 0 0 1px var(--primary-cyan);
-}
-
-.btn:active {
-  transform: scale(0.98);
-}
-
-.btn-primary {
-  background: linear-gradient(90deg, rgba(0, 243, 255, 0.1), rgba(0, 243, 255, 0.3));
-  color: var(--primary-cyan);
-  border: 1px solid var(--primary-cyan);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
-  text-shadow: 0 0 8px var(--primary-cyan);
-}
-
-.btn-primary:hover {
-  background: rgba(0, 243, 255, 0.4);
-  box-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
-  color: #fff;
-  text-shadow: none;
-}
-
-.btn-secondary {
-  background: rgba(0, 0, 0, 0.6);
-  color: var(--text-dim);
-  border: 1px solid var(--text-dim);
-  box-shadow: none;
-}
-
-.btn-secondary:hover {
-  background: rgba(188, 19, 254, 0.2);
-  color: var(--primary-purple);
-  border-color: var(--primary-purple);
-  box-shadow: 0 0 15px rgba(188, 19, 254, 0.4);
-}
-
-.btn-danger {
-  color: var(--alert-red);
-  border: 1px solid var(--alert-red);
-  background: rgba(255, 42, 109, 0.1);
-  box-shadow: 0 0 5px rgba(255, 42, 109, 0.2);
-}
-
-.btn-danger:hover {
-  background: var(--alert-red);
-  color: #000;
-  box-shadow: 0 0 15px var(--alert-red);
-}
-
-.btn-large {
+/* --- Layout Structure --- */
+#app {
   width: 100%;
-  padding: 18px;
-  font-size: 1.2rem;
-  margin-bottom: var(--space-md);
+  height: 100%;
+  position: relative;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-/* Back Button */
-.btn-back {
+.page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-deep);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Flex Container for Waiting Room */
+.page-container-flex {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  position: relative;
+}
+
+/* --- Navigation --- */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  /* background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent); */
+  z-index: var(--z-nav);
+}
+
+.btn-nav-back {
   background: none;
   border: none;
-  color: var(--primary-cyan);
-  font-size: 1.5rem;
+  color: var(--neon-blue);
   cursor: pointer;
-  padding: 0 var(--space-md) 0 0;
+  padding: 8px;
+  margin-left: -8px;
+  transition: transform 0.2s;
 }
 
-/* --- Components: Inputs --- */
-.form-group {
-  margin-bottom: var(--space-lg);
-  text-align: left;
+.btn-nav-back:active {
+  transform: scale(0.9);
 }
 
-label {
-  display: block;
+.nav-title {
   font-family: var(--font-display);
-  color: var(--primary-purple);
-  margin-bottom: var(--space-xs);
-  font-size: 0.9rem;
-}
-
-input[type="text"] {
-  width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  border: none;
-  border-bottom: 2px solid var(--text-dim);
-  color: var(--primary-cyan);
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  padding: var(--space-sm) 0;
-  transition: all 0.3s;
-  border-radius: 0;
-  /* No rounding */
-}
-
-input[type="text"]:focus {
-  outline: none;
-  border-bottom-color: var(--primary-cyan);
-  box-shadow: 0 4px 10px -4px var(--primary-cyan);
-}
-
-/* --- Components: Cards (HUD Style) --- */
-.room-info,
-.result-card,
-.game-over-card {
-  background: var(--bg-card);
-  border: 1px solid var(--primary-cyan);
-  padding: var(--space-lg);
-  position: relative;
-  /* Slight chamfer */
-  clip-path: polygon(10px 0, 100% 0,
-      100% calc(100% - 10px), calc(100% - 10px) 100%,
-      0 100%, 0 10px);
-}
-
-.room-info::before,
-.room-info::after {
-  /* Decorative HUD corners */
-  content: "";
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--primary-cyan);
-  pointer-events: none;
-}
-
-.room-info::before {
-  top: 0;
-  left: 0;
-  border-right: none;
-  border-bottom: none;
-}
-
-.room-info::after {
-  bottom: 0;
-  right: 0;
-  border-left: none;
-  border-top: none;
-}
-
-/* Large Numbers */
-.code {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  color: var(--primary-cyan);
-  text-shadow: 0 0 10px var(--primary-cyan);
-  letter-spacing: 4px;
-  margin: var(--space-xs) 0;
-}
-
-.password {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
-  color: var(--matrix-green);
+  font-size: 1.25rem;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  margin-left: 12px;
   letter-spacing: 2px;
 }
 
-/* --- Player List (Data Stream) --- */
-.player-list {
+/* --- Scrollable Content Area --- */
+.content-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 20px 100px;
+  /* Bottom padding for fixed footer */
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Cyber Card (Room Info) --- */
+.cyber-card.room-hud {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.05);
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+/* Decorative Tech Lines */
+.room-hud::before {
+  content: "";
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  bottom: 15px;
+  left: 15px;
+  border: 1px solid rgba(0, 240, 255, 0.1);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Corner Decorations */
+.hud-corner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--neon-blue);
+  transition: all 0.3s ease;
+}
+
+.hud-corner.top-left {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top-left-radius: 12px;
+}
+
+.hud-corner.top-right {
+  top: -1px;
+  right: -1px;
+  border-left: 0;
+  border-bottom: 0;
+  border-top-right-radius: 12px;
+}
+
+.hud-corner.bottom-right {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+  border-bottom-right-radius: 12px;
+}
+
+/* Tech Lines SVG Background Simulation */
+.room-hud {
+  background-image:
+    linear-gradient(90deg, transparent 50%, rgba(0, 240, 255, 0.02) 50%),
+    linear-gradient(rgba(0, 240, 255, 0.02) 50%, transparent 50%);
+  background-size: 4px 4px;
+}
+
+/* Rows */
+.hud-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.hud-label {
+  font-family: var(--font-main);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.hud-value-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Values */
+.hud-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.hud-value.code-lg {
+  font-size: 2.2rem;
+  color: var(--neon-green);
+  text-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+}
+
+.hud-value.pass-md {
+  font-size: 1.5rem;
+  color: var(--neon-green);
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.4);
+}
+
+/* Copy Button */
+.btn-icon-copy {
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: var(--neon-blue);
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon-copy:active {
+  background: var(--neon-blue);
+  color: #000;
+}
+
+/* Footer Hint */
+.hud-footer {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Tech Connector Line (Visual only) */
+.tech-connector {
+  position: absolute;
+  left: -24px;
+  top: -12px;
+  width: 10px;
+  height: 40px;
+  border-right: 2px solid var(--neon-blue);
+  opacity: 0.3;
+}
+
+/* --- Player List --- */
+.player-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  font-family: var(--font-main);
+  font-size: 1rem;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.cyber-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  /* Close gap like terminal lines */
+  gap: 10px;
 }
 
-.player-list li {
+.cyber-list li {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--space-sm) var(--space-md);
-  background: rgba(0, 243, 255, 0.05);
-  border-left: 2px solid transparent;
-  font-family: var(--font-mono);
-  color: var(--text-main);
-}
-
-.player-list li:hover {
-  background: rgba(0, 243, 255, 0.1);
-  border-left-color: var(--primary-cyan);
-}
-
-/* Host Tag */
-.host-badge {
-  background: var(--primary-cyan);
-  color: #000;
-  font-family: var(--font-display);
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.host-badge::before {
-  content: "<";
-}
-
-.host-badge::after {
-  content: ">";
-}
-
-/* --- Game Phase Styling --- */
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--primary-purple);
-  padding-bottom: var(--space-sm);
-  margin-bottom: var(--space-md);
-}
-
-.game-phase {
-  color: var(--primary-purple);
-  font-weight: 700;
-}
-
-.game-round {
-  color: var(--matrix-green);
-}
-
-.word-reveal-card {
-  text-align: center;
-  padding: var(--space-xl) 0;
-  border: 1px dashed var(--primary-cyan);
-  margin-bottom: var(--space-lg);
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.word-display {
-  font-size: 2.5rem;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 0 15px var(--primary-cyan);
-  margin: var(--space-md) 0;
-}
-
-/* --- Animations --- */
-
-/* Glitch Effect applied to Title */
-.app-title {
-  font-size: 3rem;
-  font-weight: 900;
-  color: var(--text-main);
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  padding: 12px 16px;
+  border-radius: 8px;
   position: relative;
-  text-shadow:
-    2px 0 var(--alert-red),
-    -2px 0 var(--primary-cyan);
-  animation: glitch-skew 3s infinite linear alternate-reverse;
+  overflow: hidden;
+  /* Glow on hover? */
+  transition: all 0.2s;
 }
 
-@keyframes glitch-skew {
+/* Status Dot */
+.cyber-list li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--neon-green);
+  border-radius: 50%;
+  margin-right: 12px;
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+.player-name {
+  flex: 1;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+
+/* Host Badge */
+.host-badge {
+  font-size: 0.7rem;
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+  padding: 2px 8px;
+  border-radius: 12px;
+  box-shadow: 0 0 5px rgba(0, 240, 255, 0.2);
+}
+
+/* --- Bottom Dock --- */
+.bottom-dock-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: linear-gradient(to top, #02020b 80%, transparent);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.glass-panel.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px 20px;
+  border-radius: 12px;
+}
+
+.control-label {
+  font-family: var(--font-main);
+  color: #aaa;
+}
+
+/* Stepper */
+.stepper-cyber {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-step {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--neon-purple);
+  color: var(--neon-purple);
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.btn-step:active {
+  background: var(--neon-purple);
+  color: #fff;
+}
+
+.step-display-box {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: #fff;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Start Button */
+.btn-cyber-primary {
+  position: relative;
+  width: 100%;
+  padding: 18px 0;
+  background: linear-gradient(90deg, rgba(0, 240, 255, 0.1), rgba(0, 240, 255, 0.2));
+  border: 1px solid var(--neon-blue);
+  color: #fff;
+  /* White Text */
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  overflow: hidden;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  margin-bottom: 10px;
+  /* Safe space */
+}
+
+/* Inner Text Glow */
+.btn-cyber-primary span {
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+  z-index: 2;
+  position: relative;
+}
+
+/* Bottom Glow Effect */
+.btn-cyber-primary::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0, 240, 255, 0.4), transparent);
+  opacity: 0.6;
+}
+
+/* Hover State */
+.btn-cyber-primary:active {
+  transform: scale(0.98);
+  background: rgba(0, 240, 255, 0.3);
+}
+
+/* Guest Waiting */
+.guest-waiting {
+  text-align: center;
+  color: var(--neon-blue);
+  animation: pulse 2s infinite;
+  padding-bottom: 20px;
+}
+
+@keyframes pulse {
   0% {
-    transform: skew(0deg);
+    opacity: 0.6;
   }
 
-  20% {
-    transform: skew(-2deg);
-  }
-
-  22% {
-    transform: skew(20deg);
-  }
-
-  24% {
-    transform: skew(-20deg);
-  }
-
-  26% {
-    transform: skew(0deg);
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 10px var(--neon-blue);
   }
 
   100% {
-    transform: skew(0deg);
+    opacity: 0.6;
   }
 }
 
-/* Pulse for Start Button */
-#btn-start-game {
-  animation: neon-pulse 1.5s infinite alternate;
-}
-
-@keyframes neon-pulse {
-  from {
-    box-shadow: 0 0 10px var(--primary-cyan), inset 0 0 10px var(--primary-cyan);
-  }
-
-  to {
-    box-shadow: 0 0 25px var(--primary-cyan), inset 0 0 20px var(--primary-cyan);
-  }
-}
-
-/* List Item Entry Animation */
-@keyframes slide-in-console {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.player-list li {
-  animation: slide-in-console 0.3s ease-out forwards;
-}
-
-/* --- Adjustments for Home --- */
-.app-header {
+/* --- Support for Old Pages (Legacy Compat or Universal Styles) --- */
+.page-header {
   text-align: center;
-  margin-top: 10vh;
-  margin-bottom: var(--space-xl);
+  margin: 40px 0;
 }
 
-.app-subtitle {
-  color: var(--primary-purple);
-  letter-spacing: 5px;
-  font-size: 0.8rem;
-  margin-top: var(--space-sm);
+.page-header h2 {
+  font-family: var(--font-display);
+  color: var(--neon-blue);
 }
 
-/* Floating Restart */
-.host-restart-floating {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 1000;
+.btn-back {
+  background: transparent;
+  border: none;
+  color: var(--neon-blue);
+  font-size: 2rem;
+  position: absolute;
+  left: 20px;
+  top: 35px;
+  cursor: pointer;
 }
 
-.host-restart-floating button {
-  font-size: 0.8rem;
-  padding: 8px 12px;
-}
-
-/* --- Rules --- */
-.rules-content h3 {
-  color: var(--primary-cyan);
-  border-left: 3px solid var(--primary-purple);
-  padding-left: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.rule-section {
+/* Keep existing Form styles roughly working but darker */
+input[type="text"] {
   background: rgba(255, 255, 255, 0.05);
-  padding: var(--space-md);
-  margin-bottom: var(--space-md);
-  clip-path: polygon(0 0, 100% 0,
-      100% calc(100% - 10px), calc(100% - 10px) 100%,
-      0 100%);
+  border: none;
+  border-bottom: 1px solid var(--neon-blue);
+  color: #fff;
+  padding: 10px;
+  width: 100%;
+  font-family: var(--font-main);
 }
 
-/* Dialog */
+.btn-primary {
+  background: var(--neon-blue);
+  color: #000;
+  padding: 12px 24px;
+  border: none;
+  font-family: var(--font-display);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Confirm Dialog Styles */
 .dialog-overlay {
-  background: rgba(0, 0, 0, 0.9);
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
 }
 
 .dialog-box {
   background: #000;
-  border: 2px solid var(--alert-red);
-  color: var(--text-main);
-  border-radius: 0;
-  clip-path: polygon(20px 0, 100% 0,
-      100% calc(100% - 20px), calc(100% - 20px) 100%,
-      0 100%, 0 20px);
+  border: 1px solid var(--neon-red);
+  padding: 20px;
+  width: 300px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(255, 0, 60, 0.2);
 }
 
-.dialog-title {
-  color: var(--alert-red);
+.dialog-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Ensure other pages are not broken (simple reset) */
+.page-content {
+  padding: 20px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+/* Offline State for Player List */
+.cyber-list li.offline::before {
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red);
+}
+
+.cyber-list li.offline {
+  opacity: 0.7;
+  border-color: rgba(255, 0, 60, 0.3);
+}
+
+.player-badge.offline {
+  font-size: 0.7rem;
+  color: var(--neon-red);
+  border: 1px solid var(--neon-red);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
 }
