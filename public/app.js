@@ -1894,8 +1894,8 @@ function updateWaitingRoomUI(state) {
         <div class="player-info">
           <span class="player-status ${player.isOnline ? '' : 'offline'}"></span>
           <span class="player-name">${escapeHtml(player.name)}</span>
-          ${player.isHost ? '<span class="player-badge">房主</span>' : ''}
-          ${!player.isOnline ? '<span class="player-badge offline">离线</span>' : ''}
+          ${player.isHost ? '<span class="host-badge">HOST</span>' : ''}
+          ${!player.isOnline ? '<span class="player-badge offline">OFFLINE</span>' : ''}
         </div>
         ${state.isHost && !player.isHost ? `<button class="btn-icon btn-kick" data-player-id="${player.id}" title="踢出玩家">✕</button>` : ''}
       </li>
@@ -2194,7 +2194,7 @@ function updateVotingUI(state) {
             ${canVote ? 'onclick="handleVoteClick(this)"' : ''}>
           <div class="player-info">
             <span class="player-name">${escapeHtml(player.name)}</span>
-            ${isMe ? '<span class="player-badge">你</span>' : ''}
+            ${isMe ? '<span class="player-badge">[YOU]</span>' : ''}
           </div>
           <div class="vote-status">
             ${player.hasVoted ? '<span class="voted-badge">已投票</span>' : ''}
