@@ -44,8 +44,8 @@ class PageRouter {
     // Handle initial route
     this._handleHashChange();
 
-    // Setup back button handlers
-    document.querySelectorAll('.btn-back').forEach(btn => {
+    // Setup back button handlers (support both old and new class names)
+    document.querySelectorAll('.btn-back, .btn-nav-back').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const target = e.currentTarget.dataset.back || 'home';
         this.navigate(target);
