@@ -66,10 +66,18 @@ export async function getRoomState(
       };
     }
 
-    // Update player's last seen and online status
-    await env.DB.prepare(`
-      UPDATE players SET is_online = 1, last_seen = ? WHERE id = ?
-    `).bind(Date.now(), requestingPlayer.id).run();
+    // Throttle last_seen update to reduce DB writes
+    // Only update if more than 10 seconds have passed since last update
+    // This prevents write-on-read DoS when many clients poll every 2 seconds
+    const PRESENCE_UPDATE_THRESHOLD_MS = 10000;
+    const now = Date.now();
+    const timeSinceLastUpdate = now - requestingPlayer.last_seen;
+    
+    if (timeSinceLastUpdate > PRESENCE_UPDATE_THRESHOLD_MS) {
+      await env.DB.prepare(`
+        UPDATE players SET is_online = 1, last_seen = ? WHERE id = ?
+      `).bind(now, requestingPlayer.id).run();
+    }
 
     // Get all players in the room
     const playersResult = await env.DB.prepare(`
