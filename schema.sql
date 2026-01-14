@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS descriptions (
   text TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
+  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,
+  UNIQUE(room_id, player_id, round)
 );
 
 -- 投票记录表
