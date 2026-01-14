@@ -635,6 +635,7 @@ class GameStateManager {
         if (oldPlayer.isOnline !== newPlayer.isOnline) return true;
         if (oldPlayer.hasVoted !== newPlayer.hasVoted) return true;
         if (oldPlayer.hasDescribed !== newPlayer.hasDescribed) return true;
+        if (oldPlayer.hasConfirmedWord !== newPlayer.hasConfirmedWord) return true;
       }
     }
 
@@ -2392,15 +2393,18 @@ async function tryReconnect(session) {
     // Try to get room state with existing token
     const result = await apiClient.getRoomState(session.roomId, session.token);
 
-    if (result.success) {
+    if (result.success && result.state) {
       // Session is valid, start polling and navigate to appropriate page
       playerToken = session.token;
       currentRoomId = session.roomId;
       currentRoomCode = session.roomCode;
+      // Restore room password if available in session
+      currentRoomPassword = session.roomPassword || null;
 
       gameStateManager.startPolling(session.roomId, session.token);
 
-      if (result.phase === 'waiting') {
+      // Use result.state.phase instead of result.phase
+      if (result.state.phase === 'waiting') {
         router.navigate('waiting');
       } else {
         router.navigate('game');

@@ -8,7 +8,7 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "who-is-spy-db"
-database_id = "8e112a36-6670-4293-a7fa-471953308220"
+database_id = "your-actual-database-id
 
 # Scheduled trigger for room cleanup (runs every hour)
 # Requirements: 12.2 - Clean up rooms inactive for more than 24 hours
