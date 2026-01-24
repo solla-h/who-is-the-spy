@@ -51,6 +51,7 @@ export interface PlayerRow {
   word_confirmed: number; // SQLite boolean - whether player confirmed seeing their word
   last_seen: number;
   join_order: number;
+  is_bot: number; // SQLite boolean
 }
 
 export interface DescriptionRow {

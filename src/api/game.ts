@@ -14,6 +14,7 @@ import {
   ErrorCode,
 } from '../types';
 import { authenticateAction } from '../utils/auth';
+import { runBotTurn } from '../bot/engine';
 
 interface ActionResult {
   success: boolean;
@@ -257,7 +258,8 @@ export async function submitDescription(
   roomId: string,
   playerToken: string,
   text: string,
-  env: Env
+  env: Env,
+  ctx?: ExecutionContext
 ): Promise<ActionResult> {
   try {
     // Get room
@@ -359,6 +361,15 @@ export async function submitDescription(
       UPDATE rooms SET current_turn = ?, updated_at = ? WHERE id = ?
     `).bind(nextTurn, timestamp, roomId).run();
 
+    // Trigger bot if next player is bot
+    if (ctx) {
+      const alivePlayers = players.filter(p => p.is_alive === 1);
+      const nextPlayer = alivePlayers[nextTurn];
+      if (nextPlayer && nextPlayer.is_bot === 1) {
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id));
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Submit description error:', error);
@@ -377,7 +388,8 @@ export async function submitDescription(
 export async function skipPlayer(
   roomId: string,
   playerToken: string,
-  env: Env
+  env: Env,
+  ctx?: ExecutionContext
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify description phase
@@ -412,6 +424,15 @@ export async function skipPlayer(
       UPDATE rooms SET current_turn = ?, updated_at = ? WHERE id = ?
     `).bind(nextTurn, timestamp, roomId).run();
 
+    // Trigger bot if next player is bot
+    if (ctx) {
+      const alivePlayers = players.filter(p => p.is_alive === 1);
+      const nextPlayer = alivePlayers[nextTurn];
+      if (nextPlayer && nextPlayer.is_bot === 1) {
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id));
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Skip player error:', error);
@@ -430,7 +451,8 @@ export async function skipPlayer(
 export async function startVoting(
   roomId: string,
   playerToken: string,
-  env: Env
+  env: Env,
+  ctx?: ExecutionContext
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify description phase
@@ -455,6 +477,18 @@ export async function startVoting(
       UPDATE rooms SET phase = 'voting', updated_at = ? WHERE id = ?
     `).bind(timestamp, roomId).run();
 
+    // Trigger all alive bots to vote
+    if (ctx) {
+      const playersResult = await env.DB.prepare(`
+        SELECT * FROM players WHERE room_id = ? AND is_alive = 1 AND is_bot = 1
+      `).bind(roomId).all<PlayerRow>();
+      const bots = playersResult.results || [];
+
+      for (const bot of bots) {
+        ctx.waitUntil(runBotTurn(env, roomId, bot.id));
+      }
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Start voting error:', error);
@@ -474,7 +508,8 @@ export async function startVoting(
 export async function confirmWord(
   roomId: string,
   playerToken: string,
-  env: Env
+  env: Env,
+  ctx?: ExecutionContext
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify word-reveal phase
@@ -503,6 +538,25 @@ export async function confirmWord(
         UPDATE players SET word_confirmed = 0 WHERE room_id = ?
       `).bind(roomId)
     ]);
+
+    // Trigger first player if bot
+    if (ctx) {
+      // Need to find first player (idx 0 of current_turn). confirmWord transitions to description.
+      // We need to fetch current turn from room
+      const currentRoom = await env.DB.prepare('SELECT current_turn FROM rooms WHERE id = ?').bind(roomId).first<RoomRow>();
+      const turn = currentRoom?.current_turn || 0;
+
+      const playersResult = await env.DB.prepare(`
+        SELECT * FROM players WHERE room_id = ? ORDER BY join_order ASC
+      `).bind(roomId).all<PlayerRow>();
+      const allPlayers = playersResult.results || [];
+      const alivePlayers = allPlayers.filter(p => p.is_alive === 1);
+
+      const firstPlayer = alivePlayers[turn];
+      if (firstPlayer && firstPlayer.is_bot === 1) {
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id));
+      }
+    }
 
     return { success: true };
   } catch (error) {
@@ -939,7 +993,8 @@ export async function finalizeVoting(
 export async function continueGame(
   roomId: string,
   playerToken: string,
-  env: Env
+  env: Env,
+  ctx?: ExecutionContext
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify result phase
@@ -965,13 +1020,28 @@ export async function continueGame(
     const newRound = room.round + 1;
 
     await env.DB.prepare(`
-      UPDATE rooms SET 
+        UPDATE rooms SET 
         phase = 'description',
         round = ?,
         current_turn = 0,
         updated_at = ?
       WHERE id = ?
     `).bind(newRound, timestamp, roomId).run();
+
+    // Trigger first player (index 0) if bot
+    if (ctx) {
+      // current_turn is set to 0 above
+      const playersResult = await env.DB.prepare(`
+        SELECT * FROM players WHERE room_id = ? ORDER BY join_order ASC
+      `).bind(roomId).all<PlayerRow>();
+      const allPlayers = playersResult.results || [];
+      const alivePlayers = allPlayers.filter(p => p.is_alive === 1);
+
+      const firstPlayer = alivePlayers[0];
+      if (firstPlayer && firstPlayer.is_bot === 1) {
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id));
+      }
+    }
 
     return { success: true };
   } catch (error) {

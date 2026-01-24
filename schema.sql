@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS players (
   word_confirmed INTEGER DEFAULT 0,
   last_seen INTEGER NOT NULL,
   join_order INTEGER NOT NULL,
+  is_bot INTEGER DEFAULT 0,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 

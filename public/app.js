@@ -428,6 +428,19 @@ class ApiClient {
   }
 
   /**
+   * Add a bot to the room (host only)
+   * @param {string} roomId - Room ID
+   * @param {string} token - Player token
+   * @returns {Promise<{success: boolean, botId?: string, error?: string, code?: string}>}
+   */
+  async addBot(roomId, token) {
+    return this._request(`/api/room/${roomId}/bot`, {
+      method: 'POST',
+      body: JSON.stringify({ token })
+    });
+  }
+
+  /**
    * Get user-friendly error message from error code
    * @param {string} code - Error code
    * @param {string} [defaultMessage] - Default message if code not recognized
@@ -1268,6 +1281,9 @@ function setupEventHandlers() {
   document.getElementById('spy-decrease')?.addEventListener('click', handleSpyDecrease);
   document.getElementById('spy-increase')?.addEventListener('click', handleSpyIncrease);
 
+  // Add bot button
+  document.getElementById('btn-add-bot')?.addEventListener('click', handleAddBot);
+
   // Start game button
   document.getElementById('btn-start-game')?.addEventListener('click', handleStartGame);
 
@@ -1490,6 +1506,33 @@ async function handleStartGame() {
     console.error('Start game error:', err);
   } finally {
     if (startBtn) setButtonLoading(startBtn, false);
+  }
+}
+
+/**
+ * Handle add bot button click
+ */
+async function handleAddBot() {
+  const state = gameStateManager.getState();
+  if (!state || !state.isHost) return;
+
+  const btn = document.getElementById('btn-add-bot');
+  if (btn) setButtonLoading(btn, true, { inline: true });
+
+  try {
+    const result = await apiClient.addBot(currentRoomId, playerToken);
+
+    if (result.success) {
+      showToast('AI 机器人已加入', 'success');
+      gameStateManager.refresh();
+    } else {
+      showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
+    }
+  } catch (err) {
+    showToast('网络错误，请重试', 'error');
+    console.error('Add bot error:', err);
+  } finally {
+    if (btn) setButtonLoading(btn, false);
   }
 }
 

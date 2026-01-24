@@ -8,12 +8,17 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "who-is-spy-db"
-database_id = "your-actual-database-id"
+database_id = "8e112a36-6670-4293-a7fa-471953308220"
 
 # Scheduled trigger for room cleanup (runs every hour)
 # Requirements: 12.2 - Clean up rooms inactive for more than 24 hours
 [triggers]
 crons = ["0 * * * *"]
+
+[vars]
+BOT_LLM_PROVIDER = "openai"
+BOT_LLM_BASE_URL = "https://api.openai.com"
+BOT_LLM_MODEL = "gpt-3.5-turbo"
 
 # 自定义域名绑定（取消注释并替换为你的域名）
 # [env.production]

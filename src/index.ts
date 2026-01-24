@@ -5,6 +5,10 @@ import { getAssetFromKV, NotFoundError, MethodNotAllowedError } from '@cloudflar
 export interface Env {
   DB: D1Database;
   __STATIC_CONTENT: KVNamespace;
+  BOT_LLM_PROVIDER?: string;
+  BOT_LLM_BASE_URL?: string;
+  BOT_LLM_API_KEY?: string;
+  BOT_LLM_MODEL?: string;
 }
 
 // Manifest for static assets (injected by wrangler)
@@ -20,7 +24,7 @@ export default {
 
     // Handle API routes
     if (url.pathname.startsWith('/api/')) {
-      return handleRequest(request, env);
+      return handleRequest(request, env, ctx);
     }
 
     // Serve static files from KV
