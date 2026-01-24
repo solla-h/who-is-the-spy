@@ -1577,33 +1577,52 @@ async function handleAddBot() {
  */
 async function handleAddBotSubmit(e) {
   e.preventDefault();
+  console.log('handleAddBotSubmit triggered');
 
-  const dialog = document.getElementById('bot-config-dialog');
-  const provider = document.getElementById('bot-provider').value;
-  const name = document.getElementById('bot-name').value.trim();
-  const personaId = document.getElementById('bot-persona').value; // Now a select
   const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  setButtonLoading(submitBtn, true);
-
-  const config = { provider, personaId };
-  if (name) config.name = name;
+  if (submitBtn) setButtonLoading(submitBtn, true);
 
   try {
+    const dialog = document.getElementById('bot-config-dialog');
+    const providerEl = document.getElementById('bot-provider');
+    const nameEl = document.getElementById('bot-name');
+    const personaEl = document.getElementById('bot-persona');
+
+    if (!providerEl || !nameEl || !personaEl) {
+      throw new Error('Form elements not found');
+    }
+
+    const provider = providerEl.value;
+    const name = nameEl.value.trim();
+    const personaId = personaEl.value;
+
+    console.log('Bot config:', { provider, name, personaId });
+
+    if (!provider) {
+      throw new Error('请选择一个模型');
+    }
+
+    const config = { provider, personaId };
+    if (name) config.name = name;
+
+    if (!currentRoomId || !playerToken) {
+      throw new Error('Room session missing');
+    }
+
     const result = await apiClient.addBot(currentRoomId, playerToken, config);
 
     if (result.success) {
       showToast('AI 机器人已加入', 'success');
       gameStateManager.refresh();
-      dialog.classList.add('hidden');
+      if (dialog) dialog.classList.add('hidden');
     } else {
       showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
     }
   } catch (err) {
-    showToast('网络错误，请重试', 'error');
+    showToast(err.message || '操作失败，请重试', 'error');
     console.error('Add bot error:', err);
   } finally {
-    setButtonLoading(submitBtn, false);
+    if (submitBtn) setButtonLoading(submitBtn, false);
   }
 }
 
