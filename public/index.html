@@ -328,28 +328,34 @@
             </div>
 
             <div id="host-game-controls" class="host-game-controls hidden">
-              <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="btn-next-player" class="btn-cyber-secondary" style="flex:1">跳过</button>
-                <button id="btn-start-voting" class="btn-cyber-primary" style="flex:1">开始投票</button>
+              <div class="host-controls-row">
+                <button id="btn-next-player" class="btn-cyber-secondary">跳过</button>
+                <button id="btn-start-voting" class="btn-cyber-primary">开始投票</button>
               </div>
             </div>
           </div>
 
           <!-- Voting Phase -->
           <div id="phase-voting" class="game-phase-content hidden">
+            <!-- 描述记录区域（投票时可参考） -->
+            <div class="cyber-card history-card voting-history-card">
+              <h4 class="card-title">描述记录</h4>
+              <ul id="voting-description-list" class="cyber-list-small"></ul>
+            </div>
+
             <div class="cyber-header-text">
               <p>请投票选出卧底</p>
-              <p class="voting-progress">已投票：<span id="vote-count" style="color:var(--neon-green)">0</span>/<span
+              <p class="voting-progress">已投票：<span id="vote-count" class="vote-count-num">0</span>/<span
                   id="alive-count">0</span></p>
             </div>
 
             <ul id="vote-player-list" class="cyber-list vote-list"></ul>
 
             <div id="my-vote-status" class="my-vote-status hidden">
-              <div class="cyber-hint">你已投票给：<span id="my-vote-target" style="color:var(--neon-red)">---</span></div>
+              <div class="cyber-hint">你已投票给：<span id="my-vote-target" class="vote-target-name">---</span></div>
             </div>
 
-            <div id="host-voting-controls" class="host-voting-controls" style="margin-top:20px;">
+            <div id="host-voting-controls" class="host-voting-controls">
               <button id="btn-finalize-voting" class="btn-cyber-primary btn-block hidden">
                 <span class="btn-text">结束投票</span>
               </button>

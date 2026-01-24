@@ -2160,14 +2160,33 @@ function updateDescriptionUI(state) {
   }
 }
 
+// Track auto-finalize voting timer to prevent duplicate triggers
+let autoFinalizeVotingTimer = null;
+
 /**
  * Update voting phase UI
- * Requirements: 7.1, 7.4
+ * Requirements: 7.1, 7.4, + UX Enhancement: show descriptions during voting
  * @param {Object} state - Room state
  */
 function updateVotingUI(state) {
   const alivePlayers = state.players ? state.players.filter(p => p.isAlive) : [];
   const votedCount = alivePlayers.filter(p => p.hasVoted).length;
+  const allVoted = votedCount === alivePlayers.length && alivePlayers.length > 0;
+
+  // === NEW: Render description history in voting phase ===
+  const votingDescriptionList = document.getElementById('voting-description-list');
+  if (votingDescriptionList) {
+    if (state.descriptions && state.descriptions.length > 0) {
+      votingDescriptionList.innerHTML = state.descriptions.map(desc => `
+        <li>
+          <span class="player-name">${escapeHtml(desc.playerName)}:</span>
+          <span class="description-text">${desc.text ? escapeHtml(desc.text) : '<span class="skipped">（跳过）</span>'}</span>
+        </li>
+      `).join('');
+    } else {
+      votingDescriptionList.innerHTML = '<li class="empty-state">暂无描述记录</li>';
+    }
+  }
 
   // Update voting progress
   const voteCountDisplay = document.getElementById('vote-count');
@@ -2212,12 +2231,34 @@ function updateVotingUI(state) {
   // Show/hide host finalize voting button
   const hostFinalizeBtn = document.getElementById('btn-finalize-voting');
   if (hostFinalizeBtn) {
-    // Show finalize button when all players have voted or host wants to end early
-    const allVoted = votedCount === alivePlayers.length;
     hostFinalizeBtn.classList.toggle('hidden', !state.isHost);
     if (state.isHost) {
       const btnText = hostFinalizeBtn.querySelector('.btn-text') || hostFinalizeBtn;
       btnText.textContent = allVoted ? '结束投票' : '提前结束投票';
+    }
+  }
+
+  // === NEW: Auto-finalize voting when all players have voted (host only) ===
+  if (allVoted && state.isHost) {
+    // Clear any existing timer
+    if (autoFinalizeVotingTimer) {
+      clearTimeout(autoFinalizeVotingTimer);
+    }
+    // Set a 1.5s delay before auto-finalizing to let users see the "all voted" state
+    autoFinalizeVotingTimer = setTimeout(() => {
+      // Double-check we're still in voting phase before finalizing
+      const currentState = gameStateManager.getState();
+      if (currentState && currentState.phase === 'voting' && currentState.isHost) {
+        console.log('Auto-finalizing voting: all players have voted');
+        handleFinalizeVoting();
+      }
+      autoFinalizeVotingTimer = null;
+    }, 1500);
+  } else {
+    // If not all voted, clear any pending timer
+    if (autoFinalizeVotingTimer) {
+      clearTimeout(autoFinalizeVotingTimer);
+      autoFinalizeVotingTimer = null;
     }
   }
 }

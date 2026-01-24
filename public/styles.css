@@ -1044,3 +1044,433 @@ h3 {
 .btn-kick:active {
   transform: scale(0.95);
 }
+
+/* --- Host Controls Row (Description Phase) --- */
+.host-controls-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.host-controls-row .btn-cyber-secondary,
+.host-controls-row .btn-cyber-primary {
+  flex: 1;
+  padding: 14px 0;
+}
+
+/* --- Voting Phase Enhancements --- */
+.voting-history-card {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.vote-count-num {
+  color: var(--neon-green);
+  font-weight: bold;
+}
+
+.vote-target-name {
+  color: var(--neon-red);
+  font-weight: bold;
+}
+
+.host-voting-controls {
+  margin-top: 20px;
+}
+
+/* --- Game Phase Content Flex --- */
+.game-phase-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ========================================
+   Mobile Responsive Styles
+   ======================================== */
+
+@media (max-width: 480px) {
+
+  /* === Home Page === */
+  .app-title-glitch {
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+  }
+
+  .app-subtitle-cyber {
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+  }
+
+  .home-actions-cyber {
+    padding: 0 20px;
+  }
+
+  .btn-hero {
+    padding: 18px 0;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+  }
+
+  .btn-cyber-secondary {
+    padding: 18px 0;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+  }
+
+  /* === Navigation === */
+  .nav-bar {
+    padding: 12px 16px;
+  }
+
+  .nav-title {
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+  }
+
+  /* === Content Scroll === */
+  .content-scroll {
+    padding: 8px 16px 100px;
+    gap: 16px;
+  }
+
+  /* === Room HUD Card === */
+  .cyber-card.room-hud {
+    padding: 16px;
+  }
+
+  .hud-value.code-lg {
+    font-size: 1.6rem;
+  }
+
+  .hud-value.pass-md {
+    font-size: 1.2rem;
+  }
+
+  .hud-row {
+    margin-bottom: 16px;
+  }
+
+  /* === Form Cards === */
+  .form-card {
+    padding: 20px 16px;
+  }
+
+  .form-group-cyber label {
+    font-size: 0.8rem;
+  }
+
+  .form-cyber input[type="text"] {
+    font-size: 1rem;
+    padding: 10px 0;
+  }
+
+  /* === Cyber Card General === */
+  .cyber-card {
+    padding: 16px;
+  }
+
+  /* === Word Reveal Phase === */
+  .word-card {
+    padding: 24px 16px;
+  }
+
+  .word-display-glitch {
+    font-size: 1.8rem;
+    margin: 16px 0;
+  }
+
+  .word-label {
+    font-size: 0.8rem;
+  }
+
+  .word-hint {
+    font-size: 0.75rem;
+  }
+
+  /* === Player Confirmation Status === */
+  .player-confirm-status {
+    padding: 12px;
+  }
+
+  .player-confirm-status .status-header {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+  }
+
+  .player-status-list li {
+    padding: 8px;
+    font-size: 0.85rem;
+  }
+
+  /* === Description Phase === */
+  .status-card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .highlight-name {
+    font-size: 1rem;
+  }
+
+  .history-card {
+    padding: 12px;
+  }
+
+  .card-title {
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+  }
+
+  .cyber-list-small li {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .cyber-list-small li span.player-name {
+    margin-right: 6px;
+  }
+
+  /* Description Input */
+  .my-turn-input {
+    margin-top: 12px;
+  }
+
+  #description-input {
+    font-size: 0.95rem;
+  }
+
+  /* Host Game Controls - Stack vertically on mobile */
+  .host-controls-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .host-controls-row .btn-cyber-secondary,
+  .host-controls-row .btn-cyber-primary {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 0.95rem;
+  }
+
+  /* === Voting Phase === */
+  .voting-history-card {
+    max-height: 150px;
+    padding: 12px;
+  }
+
+  .cyber-header-text {
+    padding: 8px;
+  }
+
+  .cyber-header-text p {
+    font-size: 0.9rem;
+  }
+
+  .voting-progress {
+    font-size: 0.85rem;
+  }
+
+  .vote-list li {
+    padding: 10px;
+    margin-bottom: 6px;
+  }
+
+  .vote-list .player-name {
+    font-size: 0.9rem;
+  }
+
+  .voted-badge {
+    font-size: 0.65rem;
+    padding: 2px 4px;
+  }
+
+  .my-vote-status {
+    padding: 10px;
+  }
+
+  /* === Result Phase === */
+  .result-card {
+    padding: 16px;
+  }
+
+  .elimination-result {
+    padding: 16px 0;
+    font-size: 1rem;
+  }
+
+  .eliminated-name {
+    font-size: 1.2rem;
+  }
+
+  .eliminated-text {
+    font-size: 0.8rem;
+  }
+
+  /* === Game Over Phase === */
+  .game-over-card {
+    padding: 16px;
+  }
+
+  .winner-title {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+  }
+
+  .role-reveal-section h4 {
+    font-size: 0.9rem;
+  }
+
+  .word-reveal-section {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .word-reveal-section p {
+    font-size: 0.9rem;
+  }
+
+  .word-highlight {
+    font-size: 1rem;
+    margin-left: 4px;
+  }
+
+  /* === Bottom Dock === */
+  .bottom-dock-wrapper {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .glass-panel.control-row {
+    padding: 10px 16px;
+  }
+
+  .control-label {
+    font-size: 0.85rem;
+  }
+
+  .stepper-cyber {
+    gap: 8px;
+  }
+
+  .btn-step {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+  }
+
+  .step-display-box {
+    font-size: 1rem;
+    min-width: 20px;
+  }
+
+  .btn-cyber-primary {
+    padding: 14px 0;
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+
+  /* === Buttons General === */
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* === Player List === */
+  .cyber-list li {
+    padding: 10px 12px;
+  }
+
+  .player-name {
+    font-size: 0.9rem;
+  }
+
+  .host-badge {
+    font-size: 0.65rem;
+    padding: 2px 6px;
+  }
+
+  .btn-kick {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+    margin-left: 8px;
+  }
+
+  /* === Dialog === */
+  .dialog-box {
+    width: 280px;
+    padding: 16px;
+  }
+
+  .dialog-title {
+    font-size: 1rem;
+  }
+
+  .dialog-buttons {
+    margin-top: 16px;
+  }
+
+  /* === Rules Page === */
+  .rules-card {
+    padding: 16px;
+  }
+
+  .rule-section h3 {
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+  }
+
+  .rule-section li {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+  }
+
+  /* === Role Badges === */
+  .role-badge {
+    font-size: 0.7rem;
+    padding: 1px 5px;
+  }
+
+  /* === Guest Waiting === */
+  .guest-waiting {
+    padding-bottom: 16px;
+    font-size: 0.9rem;
+  }
+
+  .waiting-text-glitch {
+    font-size: 0.9rem;
+  }
+
+  /* === Host Restart Floating Button === */
+  .host-restart-floating {
+    bottom: 8px;
+    right: 8px;
+  }
+}
+
+/* Extra small devices (phones in portrait) */
+@media (max-width: 360px) {
+  .app-title-glitch {
+    font-size: 1.8rem;
+  }
+
+  .hud-value.code-lg {
+    font-size: 1.4rem;
+  }
+
+  .word-display-glitch {
+    font-size: 1.5rem;
+  }
+
+  .winner-title {
+    font-size: 1.5rem;
+  }
+
+  .btn-hero {
+    padding: 14px 0;
+    font-size: 1rem;
+  }
+}
