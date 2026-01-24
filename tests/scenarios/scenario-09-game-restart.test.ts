@@ -14,7 +14,7 @@ import { computeGameReset, GameResetInput } from '../../src/api/game';
 import { RoomRow, PlayerRow, GamePhase } from '../../src/types';
 
 describe('场景9: 游戏重启后状态一致性测试', () => {
-  
+
   describe('房间状态重置', () => {
     it('重启后房间应该回到waiting阶段', () => {
       fc.assert(
@@ -23,7 +23,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
           (currentPhase) => {
             const input = createMockGameState(currentPhase, 5);
             const output = computeGameReset(input);
-            
+
             expect(output.room.phase).toBe('waiting');
           }
         ),
@@ -34,7 +34,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
     it('重启后词语应该被清除', () => {
       const input = createMockGameState('game-over', 5);
       const output = computeGameReset(input);
-      
+
       expect(output.room.civilian_word).toBeNull();
       expect(output.room.spy_word).toBeNull();
     });
@@ -42,7 +42,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
     it('重启后游戏状态应该被清除', () => {
       const input = createMockGameState('game-over', 5);
       const output = computeGameReset(input);
-      
+
       expect(output.room.game_state).toBeNull();
     });
 
@@ -50,9 +50,9 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
       const input = createMockGameState('game-over', 5);
       input.room.current_turn = 3;
       input.room.round = 5;
-      
+
       const output = computeGameReset(input);
-      
+
       expect(output.room.current_turn).toBe(0);
       expect(output.room.round).toBe(1);
     });
@@ -64,7 +64,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
         fc.property(fc.integer({ min: 3, max: 20 }), (playerCount) => {
           const input = createMockGameState('game-over', playerCount);
           const output = computeGameReset(input);
-          
+
           expect(output.players.length).toBe(playerCount);
         }),
         { numRuns: 50 }
@@ -78,9 +78,9 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
           // 设置一些玩家为卧底
           input.players[0].role = 'spy';
           input.players[1].role = 'civilian';
-          
+
           const output = computeGameReset(input);
-          
+
           for (const player of output.players) {
             expect(player.role).toBeNull();
           }
@@ -96,9 +96,9 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
           // 淘汰一些玩家
           input.players[0].is_alive = 0;
           input.players[1].is_alive = 0;
-          
+
           const output = computeGameReset(input);
-          
+
           for (const player of output.players) {
             expect(player.is_alive).toBe(1);
           }
@@ -112,9 +112,9 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
         fc.property(fc.integer({ min: 3, max: 20 }), (playerCount) => {
           const input = createMockGameState('game-over', playerCount);
           const originalPlayers = input.players.map(p => ({ id: p.id, name: p.name }));
-          
+
           const output = computeGameReset(input);
-          
+
           for (let i = 0; i < playerCount; i++) {
             expect(output.players[i].id).toBe(originalPlayers[i].id);
             expect(output.players[i].name).toBe(originalPlayers[i].name);
@@ -129,14 +129,14 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
     it('重启后描述记录应该被清除', () => {
       const input = createMockGameState('game-over', 5);
       const output = computeGameReset(input);
-      
+
       expect(output.descriptionsCleared).toBe(true);
     });
 
     it('重启后投票记录应该被清除', () => {
       const input = createMockGameState('game-over', 5);
       const output = computeGameReset(input);
-      
+
       expect(output.votesCleared).toBe(true);
     });
   });
@@ -150,7 +150,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
           (phase, playerCount) => {
             const input = createMockGameState(phase, playerCount);
             const output = computeGameReset(input);
-            
+
             // 房间状态一致性
             expect(output.room.phase).toBe('waiting');
             expect(output.room.civilian_word).toBeNull();
@@ -158,14 +158,14 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
             expect(output.room.game_state).toBeNull();
             expect(output.room.current_turn).toBe(0);
             expect(output.room.round).toBe(1);
-            
+
             // 玩家状态一致性
             expect(output.players.length).toBe(playerCount);
             for (const player of output.players) {
               expect(player.role).toBeNull();
               expect(player.is_alive).toBe(1);
             }
-            
+
             // 记录清除一致性
             expect(output.descriptionsCleared).toBe(true);
             expect(output.votesCleared).toBe(true);
@@ -179,14 +179,14 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
       fc.assert(
         fc.property(fc.integer({ min: 3, max: 20 }), (playerCount) => {
           const input = createMockGameState('game-over', playerCount);
-          
+
           const output1 = computeGameReset(input);
           const output2 = computeGameReset(input);
-          
+
           // 两次重启结果应该相同
           expect(output1.room.phase).toBe(output2.room.phase);
           expect(output1.players.length).toBe(output2.players.length);
-          
+
           for (let i = 0; i < playerCount; i++) {
             expect(output1.players[i].id).toBe(output2.players[i].id);
             expect(output1.players[i].role).toBe(output2.players[i].role);
@@ -202,7 +202,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
     it('最小玩家数重启', () => {
       const input = createMockGameState('game-over', 3);
       const output = computeGameReset(input);
-      
+
       expect(output.players.length).toBe(3);
       expect(output.room.phase).toBe('waiting');
     });
@@ -210,7 +210,7 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
     it('最大玩家数重启', () => {
       const input = createMockGameState('game-over', 20);
       const output = computeGameReset(input);
-      
+
       expect(output.players.length).toBe(20);
       expect(output.room.phase).toBe('waiting');
     });
@@ -221,9 +221,9 @@ describe('场景9: 游戏重启后状态一致性测试', () => {
       for (const player of input.players) {
         player.is_alive = 0;
       }
-      
+
       const output = computeGameReset(input);
-      
+
       // 所有玩家应该恢复存活
       for (const player of output.players) {
         expect(player.is_alive).toBe(1);
@@ -258,8 +258,10 @@ function createMockGameState(phase: GamePhase, playerCount: number): GameResetIn
     role: i === 0 ? 'spy' : 'civilian',
     is_alive: i < playerCount - 1 ? 1 : 0, // 最后一个玩家被淘汰
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: i,
+    is_bot: 0,
   }));
 
   return { room, players };

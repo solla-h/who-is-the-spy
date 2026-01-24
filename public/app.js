@@ -431,7 +431,7 @@ class ApiClient {
    * Add a bot to the room (host only)
    * @param {string} roomId - Room ID
    * @param {string} token - Player token
-   * @param {Object} [config] - Bot configuration { provider, name, persona }
+   * @param {Object} [config] - Bot configuration { provider, name, personaId }
    * @returns {Promise<{success: boolean, botId?: string, error?: string, code?: string}>}
    */
   async addBot(roomId, token, config = {}) {
@@ -439,6 +439,14 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ token, config })
     });
+  }
+
+  /**
+   * Get available LLM providers
+   * @returns {Promise<{success: boolean, providers?: Array}>}
+   */
+  async getProviders() {
+    return this._request('/api/providers', { method: 'GET' });
   }
 
   /**
@@ -1520,14 +1528,47 @@ async function handleStartGame() {
  * Handle add bot button click
  */
 /**
- * Handle add bot button click - Shows dialog
+ * Handle add bot button click - Shows dialog and loads providers
  */
-function handleAddBot() {
+async function handleAddBot() {
   const dialog = document.getElementById('bot-config-dialog');
-  if (dialog) {
-    dialog.classList.remove('hidden');
-    // Reset form
-    document.getElementById('form-add-bot').reset();
+  const providerSelect = document.getElementById('bot-provider');
+
+  if (!dialog || !providerSelect) return;
+
+  // Show dialog first
+  dialog.classList.remove('hidden');
+  document.getElementById('form-add-bot').reset();
+
+  // Load providers from API (if not already loaded or empty)
+  if (providerSelect.options.length <= 1) {
+    providerSelect.innerHTML = '<option value="">加载中...</option>';
+
+    try {
+      const result = await apiClient.getProviders();
+      if (result.success && result.providers) {
+        providerSelect.innerHTML = result.providers.map(p =>
+          `<option value="${p.id}">${p.name}</option>`
+        ).join('');
+      } else {
+        // Fallback to hardcoded options
+        providerSelect.innerHTML = `
+          <option value="openai">OpenAI (GPT-4o)</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="claude">Anthropic Claude</option>
+        `;
+      }
+    } catch (err) {
+      console.error('Failed to load providers:', err);
+      // Fallback
+      providerSelect.innerHTML = `
+        <option value="openai">OpenAI (GPT-4o)</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="claude">Anthropic Claude</option>
+      `;
+    }
   }
 }
 
@@ -1540,14 +1581,13 @@ async function handleAddBotSubmit(e) {
   const dialog = document.getElementById('bot-config-dialog');
   const provider = document.getElementById('bot-provider').value;
   const name = document.getElementById('bot-name').value.trim();
-  const persona = document.getElementById('bot-persona').value.trim();
+  const personaId = document.getElementById('bot-persona').value; // Now a select
   const submitBtn = e.target.querySelector('button[type="submit"]');
 
   setButtonLoading(submitBtn, true);
 
-  const config = { provider };
+  const config = { provider, personaId };
   if (name) config.name = name;
-  if (persona) config.persona = persona;
 
   try {
     const result = await apiClient.addBot(currentRoomId, playerToken, config);

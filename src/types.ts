@@ -80,6 +80,20 @@ export interface WordPairRow {
   category: string;
 }
 
+// LLM Provider 配置
+export type LLMApiType = 'openai_compatible' | 'gemini_native' | 'claude_native';
+
+export interface LLMProviderRow {
+  id: string;
+  name: string;
+  api_type: LLMApiType;
+  base_url: string;
+  default_model: string;
+  api_key_env: string;
+  enabled: number; // SQLite boolean
+  sort_order: number;
+}
+
 // API Request/Response types
 export interface CreateRoomRequest {
   playerName: string;

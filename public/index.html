@@ -49,9 +49,8 @@
             <label>选择模型</label>
             <div class="select-wrapper">
               <select id="bot-provider">
-                <option value="openai">OpenAI (GPT-3.5)</option>
-                <option value="gemini">Google (Gemini 1.5)</option>
-                <option value="claude">Anthropic (Claude 3)</option>
+                <!-- Options loaded from /api/providers -->
+                <option value="">点击加载...</option>
               </select>
               <div class="select-arrow">▼</div>
             </div>
@@ -66,10 +65,17 @@
           </div>
 
           <div class="form-group-cyber">
-            <label>人格设定 (Prompt)</label>
-            <div class="input-wrapper">
-              <textarea id="bot-persona" rows="3" placeholder="例如：你是一个说话非常犀利的评论家，喜欢用反讽的语气..."></textarea>
-              <div class="input-line"></div>
+            <label>角色人格</label>
+            <div class="select-wrapper">
+              <select id="bot-persona">
+                <option value="default">标准 AI（无人格）</option>
+                <option value="luxun">鲁迅（犀利讽刺）</option>
+                <option value="poet">诗人（浪漫诗意）</option>
+                <option value="detective">侦探（逻辑推理）</option>
+                <option value="child">小朋友（天真可爱）</option>
+                <option value="philosopher">哲学家（深沉抽象）</option>
+              </select>
+              <div class="select-arrow">▼</div>
             </div>
           </div>
 

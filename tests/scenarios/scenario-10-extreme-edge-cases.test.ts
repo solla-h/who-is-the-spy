@@ -11,12 +11,12 @@
 
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { 
-  validateGameStart, 
-  selectSpies, 
-  validateDescription, 
-  validateVote, 
-  tallyVotes, 
+import {
+  validateGameStart,
+  selectSpies,
+  validateDescription,
+  validateVote,
+  tallyVotes,
   checkVictoryCondition,
   isPlayerTurn,
   getNextTurn
@@ -25,7 +25,7 @@ import { validatePassword, validatePlayerName, validateRoomCode } from '../../sr
 import { PlayerRow } from '../../src/types';
 
 describe('场景10: 极端边界条件综合测试', () => {
-  
+
   describe('输入边界测试', () => {
     it('密码边界：正好4字符和8字符', () => {
       expect(validatePassword('abcd')).toBe(true);    // 最小
@@ -110,7 +110,7 @@ describe('场景10: 极端边界条件综合测试', () => {
       const players: PlayerRow[] = [
         createMockPlayer('p1', true),
       ];
-      
+
       expect(isPlayerTurn(players, 0, 'p1')).toBe(true);
       expect(getNextTurn(players, 0)).toBe(0); // 只有一人，回到自己
     });
@@ -121,21 +121,21 @@ describe('场景10: 极端边界条件综合测试', () => {
         createMockPlayer('p2', false),
         createMockPlayer('p3', false),
       ];
-      
+
       expect(isPlayerTurn(players, 0, 'p1')).toBe(false);
       expect(getNextTurn(players, 0)).toBe(0);
     });
 
     it('大量玩家的回合循环', () => {
-      const players: PlayerRow[] = Array.from({ length: 20 }, (_, i) => 
+      const players: PlayerRow[] = Array.from({ length: 20 }, (_, i) =>
         createMockPlayer(`p${i}`, true)
       );
-      
+
       // 验证回合正确循环
       for (let turn = 0; turn < 20; turn++) {
         expect(isPlayerTurn(players, turn, `p${turn}`)).toBe(true);
       }
-      
+
       // 验证回合循环
       expect(getNextTurn(players, 19)).toBe(0);
     });
@@ -145,7 +145,7 @@ describe('场景10: 极端边界条件综合测试', () => {
     it('所有人投同一个人', () => {
       const votes = Array.from({ length: 19 }, () => ({ targetId: 'target' }));
       const result = tallyVotes(votes);
-      
+
       expect(result.maxVotes).toBe(19);
       expect(result.eliminatedPlayerIds).toEqual(['target']);
     });
@@ -153,9 +153,9 @@ describe('场景10: 极端边界条件综合测试', () => {
     it('每人各得一票（全员平票）', () => {
       const playerIds = Array.from({ length: 10 }, (_, i) => `p${i}`);
       const votes = playerIds.map(id => ({ targetId: id }));
-      
+
       const result = tallyVotes(votes);
-      
+
       expect(result.maxVotes).toBe(1);
       expect(result.eliminatedPlayerIds.length).toBe(10);
     });
@@ -167,16 +167,16 @@ describe('场景10: 极端边界条件综合测试', () => {
           (voteIndices) => {
             const playerIds = Array.from({ length: 100 }, (_, i) => `p${i}`);
             const votes = voteIndices.map(idx => ({ targetId: playerIds[idx] }));
-            
+
             const result = tallyVotes(votes);
-            
+
             // 验证总票数
             let totalVotes = 0;
             for (const count of result.voteCounts.values()) {
               totalVotes += count;
             }
             expect(totalVotes).toBe(votes.length);
-            
+
             // 验证被淘汰者票数
             for (const eliminatedId of result.eliminatedPlayerIds) {
               expect(result.voteCounts.get(eliminatedId)).toBe(result.maxVotes);
@@ -195,7 +195,7 @@ describe('场景10: 极端边界条件综合测试', () => {
         { id: 's1', role: 'spy' },
       ];
       const spyIds = ['s1'];
-      
+
       const result = checkVictoryCondition(alivePlayers, spyIds);
       expect(result.gameOver).toBe(true);
       expect(result.winner).toBe('spy');
@@ -209,7 +209,7 @@ describe('场景10: 极端边界条件综合测试', () => {
             role: 'civilian',
           }));
           const spyIds = ['s1']; // 卧底已被淘汰
-          
+
           const result = checkVictoryCondition(alivePlayers, spyIds);
           expect(result.gameOver).toBe(true);
           expect(result.winner).toBe('civilian');
@@ -223,7 +223,7 @@ describe('场景10: 极端边界条件综合测试', () => {
         fc.property(fc.integer({ min: 1, max: 10 }), (spyCount) => {
           const spyIds = Array.from({ length: spyCount }, (_, i) => `s${i}`);
           const alivePlayers = spyIds.map(id => ({ id, role: 'spy' }));
-          
+
           const result = checkVictoryCondition(alivePlayers, spyIds);
           expect(result.gameOver).toBe(true);
           expect(result.winner).toBe('spy');
@@ -237,7 +237,7 @@ describe('场景10: 极端边界条件综合测试', () => {
     it('最小配置：3人1卧底', () => {
       const playerIds = ['p1', 'p2', 'p3'];
       const spyIds = selectSpies(playerIds, 1);
-      
+
       expect(spyIds.length).toBe(1);
       expect(playerIds).toContain(spyIds[0]);
     });
@@ -245,10 +245,10 @@ describe('场景10: 极端边界条件综合测试', () => {
     it('最大配置：20人18卧底', () => {
       const playerIds = Array.from({ length: 20 }, (_, i) => `p${i}`);
       const spyIds = selectSpies(playerIds, 18);
-      
+
       expect(spyIds.length).toBe(18);
       expect(new Set(spyIds).size).toBe(18); // 无重复
-      
+
       for (const spyId of spyIds) {
         expect(playerIds).toContain(spyId);
       }
@@ -257,13 +257,13 @@ describe('场景10: 极端边界条件综合测试', () => {
     it('角色分配的随机性验证', () => {
       const playerIds = Array.from({ length: 10 }, (_, i) => `p${i}`);
       const spySelections = new Set<string>();
-      
+
       // 多次选择，验证随机性
       for (let i = 0; i < 100; i++) {
         const spyIds = selectSpies(playerIds, 1);
         spySelections.add(spyIds[0]);
       }
-      
+
       // 应该有多个不同的玩家被选为卧底
       expect(spySelections.size).toBeGreaterThan(1);
     });
@@ -280,7 +280,7 @@ describe('场景10: 极端边界条件综合测试', () => {
           fc.boolean(),
           (voterId, targetId, voterAlive, targetAlive, hasVoted) => {
             const result = validateVote(voterId, targetId, voterAlive, targetAlive, hasVoted);
-            
+
             // 验证所有无效情况都被正确处理
             if (!voterAlive) {
               expect(result.valid).toBe(false);
@@ -306,7 +306,7 @@ describe('场景10: 极端边界条件综合测试', () => {
           fc.integer({ min: 0, max: 30 }),
           (playerCount, spyCount) => {
             const result = validateGameStart(playerCount, spyCount);
-            
+
             // 验证所有无效情况
             if (playerCount < 3) {
               expect(result.valid).toBe(false);
@@ -335,7 +335,9 @@ function createMockPlayer(id: string, isAlive: boolean): PlayerRow {
     role: 'civilian',
     is_alive: isAlive ? 1 : 0,
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: 0,
+    is_bot: 0,
   };
 }

@@ -13,7 +13,7 @@ import { validateGameStart, selectSpies, selectFirstPlayer, validateDescription,
 import { PlayerRow } from '../../src/types';
 
 describe('场景3: 完整3人游戏流程', () => {
-  
+
   describe('游戏开始验证', () => {
     it('3人1卧底应该是有效配置', () => {
       const result = validateGameStart(3, 1);
@@ -38,7 +38,7 @@ describe('场景3: 完整3人游戏流程', () => {
             // 卧底数等于玩家数
             const result1 = validateGameStart(playerCount, playerCount);
             expect(result1.valid).toBe(false);
-            
+
             // 卧底数大于玩家数
             const result2 = validateGameStart(playerCount, playerCount + 1);
             expect(result2.valid).toBe(false);
@@ -53,7 +53,7 @@ describe('场景3: 完整3人游戏流程', () => {
     it('3人游戏应该有1个卧底和2个平民', () => {
       const playerIds = ['p1', 'p2', 'p3'];
       const spyIds = selectSpies(playerIds, 1);
-      
+
       expect(spyIds.length).toBe(1);
       expect(playerIds.filter(id => !spyIds.includes(id)).length).toBe(2);
     });
@@ -63,7 +63,7 @@ describe('场景3: 完整3人游戏流程', () => {
         fc.property(fc.integer({ min: 3, max: 20 }), (playerCount) => {
           const playerIds = Array.from({ length: playerCount }, (_, i) => `player-${i}`);
           const spyIds = selectSpies(playerIds, 1);
-          
+
           expect(playerIds).toContain(spyIds[0]);
         }),
         { numRuns: 100 }
@@ -74,11 +74,11 @@ describe('场景3: 完整3人游戏流程', () => {
   describe('描述阶段', () => {
     it('应该正确判断玩家回合', () => {
       const players = createMockPlayers(3);
-      
+
       // 第一个玩家的回合
       expect(isPlayerTurn(players, 0, players[0].id)).toBe(true);
       expect(isPlayerTurn(players, 0, players[1].id)).toBe(false);
-      
+
       // 第二个玩家的回合
       expect(isPlayerTurn(players, 1, players[1].id)).toBe(true);
       expect(isPlayerTurn(players, 1, players[0].id)).toBe(false);
@@ -86,7 +86,7 @@ describe('场景3: 完整3人游戏流程', () => {
 
     it('应该正确计算下一个回合', () => {
       const players = createMockPlayers(3);
-      
+
       expect(getNextTurn(players, 0)).toBe(1);
       expect(getNextTurn(players, 1)).toBe(2);
       expect(getNextTurn(players, 2)).toBe(0); // 循环回第一个
@@ -95,10 +95,10 @@ describe('场景3: 完整3人游戏流程', () => {
     it('描述长度应该在5-50字符之间', () => {
       // 有效描述
       expect(validateDescription('这是一个有效的描述', '苹果').valid).toBe(true);
-      
+
       // 太短
       expect(validateDescription('短', '苹果').valid).toBe(false);
-      
+
       // 太长 (超过50个字符)
       const longDesc = '这是一个非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常非常长的描述啊';
       expect(longDesc.length).toBeGreaterThan(50);
@@ -119,7 +119,7 @@ describe('场景3: 完整3人游戏流程', () => {
         { targetId: 'p1' },
         { targetId: 'p2' },
       ];
-      
+
       const result = tallyVotes(votes);
       expect(result.voteCounts.get('p1')).toBe(2);
       expect(result.voteCounts.get('p2')).toBe(1);
@@ -135,7 +135,7 @@ describe('场景3: 完整3人游戏流程', () => {
         { id: 'p2', role: 'civilian' },
       ];
       const spyIds = ['p3']; // p3是卧底但已被淘汰
-      
+
       const result = checkVictoryCondition(alivePlayers, spyIds);
       expect(result.gameOver).toBe(true);
       expect(result.winner).toBe('civilian');
@@ -147,7 +147,7 @@ describe('场景3: 完整3人游戏流程', () => {
         { id: 'p3', role: 'spy' },
       ];
       const spyIds = ['p3'];
-      
+
       const result = checkVictoryCondition(alivePlayers, spyIds);
       expect(result.gameOver).toBe(true);
       expect(result.winner).toBe('spy');
@@ -160,7 +160,7 @@ describe('场景3: 完整3人游戏流程', () => {
         { id: 'p3', role: 'spy' },
       ];
       const spyIds = ['p3'];
-      
+
       const result = checkVictoryCondition(alivePlayers, spyIds);
       expect(result.gameOver).toBe(false);
     });
@@ -177,7 +177,9 @@ function createMockPlayers(count: number): PlayerRow[] {
     role: i === 0 ? 'spy' : 'civilian',
     is_alive: 1,
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: i,
+    is_bot: 0,
   }));
 }

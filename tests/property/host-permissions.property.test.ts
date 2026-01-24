@@ -22,8 +22,10 @@ function createMockPlayerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     role: 'civilian',
     is_alive: 1,
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: 0,
+    is_bot: 0,
     ...overrides,
   };
 }
@@ -81,20 +83,20 @@ describe('Property 6: Host Permissions', () => {
         (playerCount, hostIndex) => {
           const normalizedHostIndex = hostIndex % playerCount;
           const roomId = crypto.randomUUID();
-          
+
           // Create players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               room_id: roomId,
               join_order: i,
             })
           );
-          
+
           // Create room with host
           const hostId = players[normalizedHostIndex].id;
           const room = createMockRoomRow({ id: roomId, host_id: hostId });
-          
+
           // Verify only host is authorized
           for (let i = 0; i < playerCount; i++) {
             const result = authorizeHostAction(players[i], room);
@@ -124,19 +126,19 @@ describe('Property 6: Host Permissions', () => {
         (playerCount, hostIndex) => {
           const normalizedHostIndex = hostIndex % playerCount;
           const roomId = crypto.randomUUID();
-          
+
           // Create players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               room_id: roomId,
             })
           );
-          
+
           // Create room with host
           const hostId = players[normalizedHostIndex].id;
           const room = createMockRoomRow({ id: roomId, host_id: hostId });
-          
+
           // Check multiple times - should always be consistent
           for (let check = 0; check < 5; check++) {
             for (let i = 0; i < playerCount; i++) {
@@ -162,19 +164,19 @@ describe('Property 6: Host Permissions', () => {
         (playerCount, hostIndex) => {
           const normalizedHostIndex = hostIndex % playerCount;
           const roomId = crypto.randomUUID();
-          
+
           // Create players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               room_id: roomId,
             })
           );
-          
+
           // Create room with host
           const hostId = players[normalizedHostIndex].id;
           const room = createMockRoomRow({ id: roomId, host_id: hostId });
-          
+
           // Count hosts
           const hostCount = players.filter(p => isHost(p, room)).length;
           expect(hostCount).toBe(1);
@@ -196,19 +198,19 @@ describe('Property 6: Host Permissions', () => {
         (playerCount, hostIndex) => {
           const normalizedHostIndex = hostIndex % playerCount;
           const roomId = crypto.randomUUID();
-          
+
           // Create players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               room_id: roomId,
             })
           );
-          
+
           // Create room with host
           const hostId = players[normalizedHostIndex].id;
           const room = createMockRoomRow({ id: roomId, host_id: hostId });
-          
+
           // All non-host players should be rejected
           const nonHostPlayers = players.filter((_, i) => i !== normalizedHostIndex);
           for (const player of nonHostPlayers) {
@@ -233,10 +235,10 @@ describe('Property 6: Host Permissions', () => {
         (playerId, roomId, hostId) => {
           const player = createMockPlayerRow({ id: playerId, room_id: roomId });
           const room = createMockRoomRow({ id: roomId, host_id: hostId });
-          
+
           const result1 = authorizeHostAction(player, room);
           const result2 = authorizeHostAction(player, room);
-          
+
           expect(result1.authorized).toBe(result2.authorized);
           expect(result1.error).toBe(result2.error);
         }
@@ -251,7 +253,7 @@ describe('Property 6: Host Permissions', () => {
    */
   it('should require host authorization regardless of game phase', () => {
     const phases = ['waiting', 'word-reveal', 'description', 'voting', 'result', 'game-over'] as const;
-    
+
     fc.assert(
       fc.property(
         fc.constantFrom(...phases),
@@ -260,19 +262,19 @@ describe('Property 6: Host Permissions', () => {
         (phase, playerCount, hostIndex) => {
           const normalizedHostIndex = hostIndex % playerCount;
           const roomId = crypto.randomUUID();
-          
+
           // Create players
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
-            createMockPlayerRow({ 
+            createMockPlayerRow({
               id: `player-${i}`,
               room_id: roomId,
             })
           );
-          
+
           // Create room with host in different phases
           const hostId = players[normalizedHostIndex].id;
           const room = createMockRoomRow({ id: roomId, host_id: hostId, phase });
-          
+
           // Host authorization should work the same regardless of phase
           for (let i = 0; i < playerCount; i++) {
             const result = authorizeHostAction(players[i], room);
