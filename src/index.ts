@@ -5,10 +5,16 @@ import { getAssetFromKV, NotFoundError, MethodNotAllowedError } from '@cloudflar
 export interface Env {
   DB: D1Database;
   __STATIC_CONTENT: KVNamespace;
-  BOT_LLM_PROVIDER?: string;
-  BOT_LLM_BASE_URL?: string;
-  BOT_LLM_API_KEY?: string;
-  BOT_LLM_MODEL?: string;
+  // OpenAI
+  OPENAI_API_KEY?: string;
+  OPENAI_BASE_URL?: string;
+  OPENAI_MODEL?: string;
+  // Gemini
+  GEMINI_API_KEY?: string; // v1beta
+  GEMINI_MODEL?: string;
+  // Claude (Anthropic)
+  CLAUDE_API_KEY?: string;
+  CLAUDE_MODEL?: string;
 }
 
 // Manifest for static assets (injected by wrangler)

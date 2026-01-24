@@ -7,13 +7,11 @@ import { PlayerRow } from '../types';
 export async function runBotTurn(env: Env, roomId: string, botId: string) {
     try {
         // 1. Get Context
-        const result = await getRoomState(roomId, "bot_token_" + botId, env);
-        // Wait, getRoomState requires a valid token. 
-        // We need to fetch the bot's real token first.
-
-        const bot = await env.DB.prepare('SELECT token FROM players WHERE id = ?').bind(botId).first<PlayerRow>();
+        // Fetch bot token and config
+        const bot = await env.DB.prepare('SELECT token, bot_config FROM players WHERE id = ?').bind(botId).first<PlayerRow>();
         if (!bot) throw new Error(`Bot ${botId} not found`);
         const botToken = bot.token;
+        const botConfig = bot.bot_config || 'openai'; // Default to openai
 
         const stateResult = await getRoomState(roomId, botToken, env);
         if (!stateResult.success || !stateResult.state) {
@@ -24,16 +22,16 @@ export async function runBotTurn(env: Env, roomId: string, botId: string) {
         // Check if it's actually my turn (double check to avoid race conditions is handled by API)
 
         if (state.phase === 'description') {
-            await handleDescriptionPhase(env, roomId, botToken, botId, state);
+            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig);
         } else if (state.phase === 'voting') {
-            await handleVotingPhase(env, roomId, botToken, botId, state);
+            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig);
         }
     } catch (error) {
         console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
     }
 }
 
-async function handleDescriptionPhase(env: Env, roomId: string, botToken: string, botId: string, state: any) {
+async function handleDescriptionPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: string) {
     // Check if it is my turn
     // state.currentTurn is index.
     // getRoomState doesn't explicitly tell if it is MY turn, but we can verify.
@@ -55,7 +53,7 @@ async function handleDescriptionPhase(env: Env, roomId: string, botToken: string
 
     const systemPrompt = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
 
-    const response = await callLLM(env, systemPrompt, userPrompt);
+    const response = await callLLM(env, systemPrompt, userPrompt, botConfig);
     const json = extractJSON(response);
 
     // Validate description
@@ -72,7 +70,7 @@ async function handleDescriptionPhase(env: Env, roomId: string, botToken: string
     await submitDescription(roomId, botToken, description, env);
 }
 
-async function handleVotingPhase(env: Env, roomId: string, botToken: string, botId: string, state: any) {
+async function handleVotingPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: string) {
     // Check if already voted
     const hasVoted = state.players.find((p: any) => p.id === botId)?.hasVoted;
     if (hasVoted) return;
@@ -87,7 +85,7 @@ async function handleVotingPhase(env: Env, roomId: string, botToken: string, bot
 
     const systemPrompt = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
 
-    const response = await callLLM(env, systemPrompt, userPrompt);
+    const response = await callLLM(env, systemPrompt, userPrompt, botConfig);
     const json = extractJSON(response);
 
     const targetId = json.vote_target_id;
@@ -109,48 +107,90 @@ async function handleVotingPhase(env: Env, roomId: string, botToken: string, bot
 
 // --- Helpers ---
 
-async function callLLM(env: Env, system: string, user: string): Promise<string> {
-    const { BOT_LLM_PROVIDER, BOT_LLM_BASE_URL, BOT_LLM_API_KEY, BOT_LLM_MODEL } = env;
+async function callLLM(env: Env, system: string, user: string, botConfig: string = 'openai'): Promise<string> {
+    // 1. OpenAI Compatible (Default)
+    if (botConfig === 'openai') {
+        const apiKey = env.OPENAI_API_KEY;
+        const baseUrl = env.OPENAI_BASE_URL || 'https://api.openai.com';
+        const model = env.OPENAI_MODEL || 'gpt-3.5-turbo';
 
-    if (!BOT_LLM_API_KEY) {
-        // Fallback/Mock for development if no key provided
-        console.warn("Missing BOT_LLM_API_KEY. Using mock response.");
-        return JSON.stringify({
-            description: "I am a bot.",
-            vote_target_id: "unknown",
-            thought: "I have no brain."
+        if (!apiKey) throw new Error("Missing OPENAI_API_KEY");
+
+        const resp = await fetch(`${baseUrl}/v1/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: model,
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user', content: user }
+                ],
+                temperature: 0.7
+            })
         });
+
+        if (!resp.ok) throw new Error(`OpenAI API Error: ${resp.status} ${await resp.text()}`);
+        const data = await resp.json() as any;
+        return data.choices?.[0]?.message?.content || "{}";
     }
 
-    // Default to 'openai' compatible if not specified or 'openai' or 'deepseek'
-    // DeepSeek is OpenAI compatible.
+    // 2. Google Gemini (via OpenAI-compatible endpoint or native)
+    // Cloudflare AI Gateway or direct REST. Using direct REST for v1beta.
+    if (botConfig === 'gemini') {
+        const apiKey = env.GEMINI_API_KEY;
+        const model = env.GEMINI_MODEL || 'gemini-1.5-flash';
 
-    const baseUrl = BOT_LLM_BASE_URL || 'https://api.openai.com';
-    const model = BOT_LLM_MODEL || 'gpt-3.5-turbo';
+        if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
 
-    const resp = await fetch(`${baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${BOT_LLM_API_KEY}`
-        },
-        body: JSON.stringify({
-            model: model,
-            messages: [
-                { role: 'system', content: system },
-                { role: 'user', content: user }
-            ],
-            temperature: 0.7
-        })
-    });
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    role: "user",
+                    parts: [{ text: system + "\n\n" + user }] // Gemini system prompt handling varies, simple concat works well
+                }],
+                generationConfig: { responseMimeType: "application/json" }
+            })
+        });
 
-    if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`LLM API Error: ${resp.status} ${txt}`);
+        if (!resp.ok) throw new Error(`Gemini API Error: ${resp.status} ${await resp.text()}`);
+        const data = await resp.json() as any;
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
     }
 
-    const data = await resp.json() as any;
-    return data.choices?.[0]?.message?.content || "{}";
+    // 3. Anthropic Claude
+    if (botConfig === 'claude') {
+        const apiKey = env.CLAUDE_API_KEY;
+        const model = env.CLAUDE_MODEL || 'claude-3-haiku-20240307';
+
+        if (!apiKey) throw new Error("Missing CLAUDE_API_KEY");
+
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: model,
+                max_tokens: 1024,
+                system: system,
+                messages: [{ role: 'user', content: user }]
+            })
+        });
+
+        if (!resp.ok) throw new Error(`Claude API Error: ${resp.status} ${await resp.text()}`);
+        const data = await resp.json() as any;
+        return data.content?.[0]?.text || "{}";
+    }
+
+    throw new Error(`Unsupported bot config: ${botConfig}`);
 }
 
 function extractJSON(text: string): any {

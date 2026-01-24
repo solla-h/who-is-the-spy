@@ -52,6 +52,7 @@ export interface PlayerRow {
   last_seen: number;
   join_order: number;
   is_bot: number; // SQLite boolean
+  bot_config?: string;
 }
 
 export interface DescriptionRow {
