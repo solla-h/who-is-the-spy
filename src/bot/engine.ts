@@ -63,40 +63,57 @@ async function handleDescriptionPhase(
     env: Env, roomId: string, botToken: string, botId: string,
     state: any, botConfig: any, providerConfig: LLMProviderRow | null
 ) {
-    // Filter history
-    const historyText = state.descriptions.length > 0
-        ? state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n')
-        : "(No one has spoken yet in this round)";
+    let description = "";
 
-    const aliveCount = state.players.filter((p: any) => p.isAlive).length;
+    try {
+        // Filter history
+        const historyText = state.descriptions.length > 0
+            ? state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n')
+            : "(No one has spoken yet in this round)";
 
-    const userPrompt = DESC_PROMPT
-        .replace('{{ROUND}}', String(state.round))
-        .replace('{{ALIVE_COUNT}}', String(aliveCount))
-        .replace('{{SPY_COUNT}}', String(state.settings.spyCount))
-        .replace('{{MY_WORD}}', state.myWord || 'Unknown')
-        .replace('{{HISTORY}}', historyText);
+        const aliveCount = state.players.filter((p: any) => p.isAlive).length;
 
-    const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
-    const systemPrompt = botConfig.persona
-        ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
-        : systemPromptBase;
+        const userPrompt = DESC_PROMPT
+            .replace('{{ROUND}}', String(state.round))
+            .replace('{{ALIVE_COUNT}}', String(aliveCount))
+            .replace('{{SPY_COUNT}}', String(state.settings.spyCount))
+            .replace('{{MY_WORD}}', state.myWord || 'Unknown')
+            .replace('{{HISTORY}}', historyText);
 
-    const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
-    const json = extractJSON(response);
+        const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+        const systemPrompt = botConfig.persona
+            ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
+            : systemPromptBase;
 
-    // Validate description
-    const description = json.description?.trim();
-    if (!description) throw new Error("Bot generated empty description");
+        const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
+        const json = extractJSON(response);
 
-    // Basic safety check
-    if (state.myWord && description.includes(state.myWord)) {
-        console.warn("Bot tried to say the word! Fallback.");
-        await submitDescription(roomId, botToken, "It's hard to describe...", env);
-        return;
+        // Validate description
+        description = json.description?.trim();
+
+        if (!description) throw new Error("Bot generated empty description");
+
+        // Basic safety check
+        if (state.myWord && description.includes(state.myWord)) {
+            console.warn("Bot tried to say the word! Fallback.");
+            description = "It's hard to describe...";
+        }
+    } catch (error: any) {
+        console.error(`[Bot] Description generation failed for ${botId}:`, error);
+        // Fallback description with error info to alert users
+        const errorMsg = error.message || "Unknown error";
+        if (errorMsg.includes("Missing API key")) {
+            description = "[AI Error] 未配置 API Key，请联系房主。";
+        } else {
+            description = `[AI Error] 思考卡壳了 (${errorMsg.substring(0, 20)}...)`;
+        }
     }
 
-    await submitDescription(roomId, botToken, description, env);
+    try {
+        await submitDescription(roomId, botToken, description, env);
+    } catch (submitError) {
+        console.error(`[Bot] Failed to submit description for ${botId}:`, submitError);
+    }
 }
 
 async function handleVotingPhase(
@@ -107,37 +124,54 @@ async function handleVotingPhase(
     const hasVoted = state.players.find((p: any) => p.id === botId)?.hasVoted;
     if (hasVoted) return;
 
-    const historyText = state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n');
+    let targetId = "";
 
-    const userPrompt = VOTE_PROMPT
-        .replace('{{ROUND}}', String(state.round))
-        .replace('{{MY_WORD}}', state.myWord || 'Unknown')
-        .replace('{{FULL_HISTORY}}', historyText)
-        .replace('{{MY_ID}}', botId);
+    try {
+        const historyText = state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n');
 
-    const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
-    const systemPrompt = botConfig.persona
-        ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
-        : systemPromptBase;
+        const userPrompt = VOTE_PROMPT
+            .replace('{{ROUND}}', String(state.round))
+            .replace('{{MY_WORD}}', state.myWord || 'Unknown')
+            .replace('{{FULL_HISTORY}}', historyText)
+            .replace('{{MY_ID}}', botId);
 
-    const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
-    const json = extractJSON(response);
+        const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+        const systemPrompt = botConfig.persona
+            ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
+            : systemPromptBase;
 
-    const targetId = json.vote_target_id;
+        const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
+        const json = extractJSON(response);
 
-    // Validate target
+        targetId = json.vote_target_id;
+    } catch (error) {
+        console.error(`[Bot] Vote generation failed for ${botId}:`, error);
+        // Will fall through to random vote below
+    }
+
+    // Validate target or perform random fallback
     const target = state.players.find((p: any) => p.id === targetId);
+
     if (!target || !target.isAlive || target.id === botId) {
+        console.warn(`[Bot] Invalid or missing vote target for ${botId}. Performing random fallback.`);
         // Fallback: Vote randomly
         const aliveOthers = state.players.filter((p: any) => p.isAlive && p.id !== botId);
         if (aliveOthers.length > 0) {
             const randomTarget = aliveOthers[Math.floor(Math.random() * aliveOthers.length)];
-            await submitVote(roomId, botToken, randomTarget.id, env);
+            try {
+                await submitVote(roomId, botToken, randomTarget.id, env);
+            } catch (err) {
+                console.error(`[Bot] Failed to submit random vote for ${botId}:`, err);
+            }
         }
         return;
     }
 
-    await submitVote(roomId, botToken, targetId, env);
+    try {
+        await submitVote(roomId, botToken, targetId, env);
+    } catch (err) {
+        console.error(`[Bot] Failed to submit vote for ${botId}:`, err);
+    }
 }
 
 // --- LLM Caller with Dynamic Provider Config ---
