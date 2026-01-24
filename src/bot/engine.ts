@@ -4,34 +4,43 @@ import { submitDescription, submitVote } from '../api/game';
 import { SYSTEM_PROMPT, DESC_PROMPT, VOTE_PROMPT } from './prompts';
 import { PlayerRow } from '../types';
 
-export async function runBotTurn(env: Env, roomId: string, botId: string) {
-    try {
-        // 1. Get Context
-        // Fetch bot token and config
-        const bot = await env.DB.prepare('SELECT token, bot_config FROM players WHERE id = ?').bind(botId).first<PlayerRow>();
-        if (!bot) throw new Error(`Bot ${botId} not found`);
-        const botToken = bot.token;
-        const botConfig = bot.bot_config || 'openai'; // Default to openai
+try {
+    // 1. Get Context
+    // Fetch bot token and config
+    const bot = await env.DB.prepare('SELECT token, bot_config FROM players WHERE id = ?').bind(botId).first<PlayerRow>();
+    if (!bot) throw new Error(`Bot ${botId} not found`);
+    const botToken = bot.token;
 
-        const stateResult = await getRoomState(roomId, botToken, env);
-        if (!stateResult.success || !stateResult.state) {
-            throw new Error(`Failed to get state for bot ${botId}: ${stateResult.error}`);
+    let botConfig: any = { provider: 'openai', persona: '' };
+    if (bot.bot_config) {
+        try {
+            // Try parsing as JSON first
+            botConfig = JSON.parse(bot.bot_config);
+        } catch (e) {
+            // Fallback for legacy plain strings
+            botConfig = { provider: bot.bot_config, persona: '' };
         }
-        const state = stateResult.state;
-
-        // Check if it's actually my turn (double check to avoid race conditions is handled by API)
-
-        if (state.phase === 'description') {
-            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig);
-        } else if (state.phase === 'voting') {
-            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig);
-        }
-    } catch (error) {
-        console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
     }
+
+    const stateResult = await getRoomState(roomId, botToken, env);
+    if (!stateResult.success || !stateResult.state) {
+        throw new Error(`Failed to get state for bot ${botId}: ${stateResult.error}`);
+    }
+    const state = stateResult.state;
+
+    // Check if it's actually my turn (double check to avoid race conditions is handled by API)
+
+    if (state.phase === 'description') {
+        await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig);
+    } else if (state.phase === 'voting') {
+        await handleVotingPhase(env, roomId, botToken, botId, state, botConfig);
+    }
+} catch (error) {
+    console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
+}
 }
 
-async function handleDescriptionPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: string) {
+async function handleDescriptionPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: any) {
     // Check if it is my turn
     // state.currentTurn is index.
     // getRoomState doesn't explicitly tell if it is MY turn, but we can verify.
@@ -51,9 +60,12 @@ async function handleDescriptionPhase(env: Env, roomId: string, botToken: string
         .replace('{{MY_WORD}}', state.myWord || 'Unknown')
         .replace('{{HISTORY}}', historyText);
 
-    const systemPrompt = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+    const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+    const systemPrompt = botConfig.persona
+        ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
+        : systemPromptBase;
 
-    const response = await callLLM(env, systemPrompt, userPrompt, botConfig);
+    const response = await callLLM(env, systemPrompt, userPrompt, botConfig.provider);
     const json = extractJSON(response);
 
     // Validate description
@@ -70,7 +82,7 @@ async function handleDescriptionPhase(env: Env, roomId: string, botToken: string
     await submitDescription(roomId, botToken, description, env);
 }
 
-async function handleVotingPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: string) {
+async function handleVotingPhase(env: Env, roomId: string, botToken: string, botId: string, state: any, botConfig: any) {
     // Check if already voted
     const hasVoted = state.players.find((p: any) => p.id === botId)?.hasVoted;
     if (hasVoted) return;
@@ -83,9 +95,12 @@ async function handleVotingPhase(env: Env, roomId: string, botToken: string, bot
         .replace('{{FULL_HISTORY}}', historyText)
         .replace('{{MY_ID}}', botId);
 
-    const systemPrompt = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+    const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+    const systemPrompt = botConfig.persona
+        ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
+        : systemPromptBase;
 
-    const response = await callLLM(env, systemPrompt, userPrompt, botConfig);
+    const response = await callLLM(env, systemPrompt, userPrompt, botConfig.provider);
     const json = extractJSON(response);
 
     const targetId = json.vote_target_id;

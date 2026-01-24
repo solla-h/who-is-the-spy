@@ -43,14 +43,14 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
     const botMatch = path.match(/^\/api\/room\/([^/]+)\/bot$/);
     if (botMatch && method === 'POST') {
       const roomId = botMatch[1];
-      const body = await request.json() as { token: string };
-      const { token } = body;
+      const body = await request.json() as { token: string; config?: any };
+      const { token, config } = body;
 
       if (!token) {
         return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
       }
 
-      const result = await addBot(roomId, token, env);
+      const result = await addBot(roomId, token, env, config);
       const status = result.success ? 200 : getErrorStatus(result.code);
       return jsonResponse(result, status, corsHeaders);
     }

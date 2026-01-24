@@ -12,7 +12,8 @@ export interface AddBotResult {
 export async function addBot(
     roomId: string,
     playerToken: string,
-    env: Env
+    env: Env,
+    config: any = {}
 ): Promise<AddBotResult> {
     try {
         // Authenticate host
@@ -33,22 +34,30 @@ export async function addBot(
         // Generate Bot ID and Token
         const botId = crypto.randomUUID();
         const botToken = 'bot_' + crypto.randomUUID(); // Prefix for easier debugging
-        // Random name
-        const botName = `AI-Bot-${Math.floor(Math.random() * 1000)}`;
+        // Random name or provided name
+        const botName = config.name || `AI-Bot-${Math.floor(Math.random() * 1000)}`;
 
         // Get current players to determine join order
         const playersResult = await env.DB.prepare(`
-      SELECT COUNT(*) as count FROM players WHERE room_id = ?
-    `).bind(roomId).first<{ count: number }>();
+          SELECT COUNT(*) as count FROM players WHERE room_id = ?
+        `).bind(roomId).first<{ count: number }>();
 
         const joinOrder = (playersResult?.count || 0) + 1;
         const timestamp = Date.now();
 
+        // Prepare config to store (provider, persona, etc.)
+        // Ensure defaults
+        const storageConfig = {
+            provider: config.provider || 'openai',
+            persona: config.persona || '',
+            ...config
+        };
+
         // Insert bot into players table
         await env.DB.prepare(`
-      INSERT INTO players (id, room_id, token, name, role, is_alive, is_online, word_confirmed, last_seen, join_order, is_bot)
-      VALUES (?, ?, ?, ?, NULL, 1, 1, 0, ?, ?, 1)
-    `).bind(botId, roomId, botToken, botName, timestamp, joinOrder).run();
+          INSERT INTO players (id, room_id, token, name, role, is_alive, is_online, word_confirmed, last_seen, join_order, is_bot, bot_config)
+          VALUES (?, ?, ?, ?, NULL, 1, 1, 0, ?, ?, 1, ?)
+        `).bind(botId, roomId, botToken, botName, timestamp, joinOrder, JSON.stringify(storageConfig)).run();
 
         // Update room updated_at
         await env.DB.prepare(`

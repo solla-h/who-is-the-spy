@@ -39,6 +39,48 @@
       </div>
     </div>
 
+    <!-- Bot Config Dialog -->
+    <div id="bot-config-dialog" class="dialog-overlay hidden">
+      <div class="dialog-box bot-config-box">
+        <h3 class="dialog-title">添加 AI 玩家</h3>
+        <form id="form-add-bot" class="form-cyber">
+
+          <div class="form-group-cyber">
+            <label>选择模型</label>
+            <div class="select-wrapper">
+              <select id="bot-provider">
+                <option value="openai">OpenAI (GPT-3.5)</option>
+                <option value="gemini">Google (Gemini 1.5)</option>
+                <option value="claude">Anthropic (Claude 3)</option>
+              </select>
+              <div class="select-arrow">▼</div>
+            </div>
+          </div>
+
+          <div class="form-group-cyber">
+            <label>AI 昵称</label>
+            <div class="input-wrapper">
+              <input type="text" id="bot-name" placeholder="随机昵称">
+              <div class="input-line"></div>
+            </div>
+          </div>
+
+          <div class="form-group-cyber">
+            <label>人格设定 (Prompt)</label>
+            <div class="input-wrapper">
+              <textarea id="bot-persona" rows="3" placeholder="例如：你是一个说话非常犀利的评论家，喜欢用反讽的语气..."></textarea>
+              <div class="input-line"></div>
+            </div>
+          </div>
+
+          <div class="dialog-buttons">
+            <button type="button" id="bot-cancel" class="btn btn-secondary">取消</button>
+            <button type="submit" class="btn btn-primary">添加</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Page: Home -->
     <div id="page-home" class="page">
       <div class="page-container-flex centered-content">

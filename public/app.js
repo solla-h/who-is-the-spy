@@ -431,12 +431,13 @@ class ApiClient {
    * Add a bot to the room (host only)
    * @param {string} roomId - Room ID
    * @param {string} token - Player token
+   * @param {Object} [config] - Bot configuration { provider, name, persona }
    * @returns {Promise<{success: boolean, botId?: string, error?: string, code?: string}>}
    */
-  async addBot(roomId, token) {
+  async addBot(roomId, token, config = {}) {
     return this._request(`/api/room/${roomId}/bot`, {
       method: 'POST',
-      body: JSON.stringify({ token })
+      body: JSON.stringify({ token, config })
     });
   }
 
@@ -1305,6 +1306,12 @@ function setupEventHandlers() {
 
   // Finalize voting (host only)
   document.getElementById('btn-finalize-voting')?.addEventListener('click', handleFinalizeVoting);
+
+  // Bot Dialog Controls
+  document.getElementById('bot-cancel')?.addEventListener('click', () => {
+    document.getElementById('bot-config-dialog').classList.add('hidden');
+  });
+  document.getElementById('form-add-bot')?.addEventListener('submit', handleAddBotSubmit);
 }
 
 /**
@@ -1512,19 +1519,43 @@ async function handleStartGame() {
 /**
  * Handle add bot button click
  */
-async function handleAddBot() {
-  const state = gameStateManager.getState();
-  if (!state || !state.isHost) return;
+/**
+ * Handle add bot button click - Shows dialog
+ */
+function handleAddBot() {
+  const dialog = document.getElementById('bot-config-dialog');
+  if (dialog) {
+    dialog.classList.remove('hidden');
+    // Reset form
+    document.getElementById('form-add-bot').reset();
+  }
+}
 
-  const btn = document.getElementById('btn-add-bot');
-  if (btn) setButtonLoading(btn, true, { inline: true });
+/**
+ * Handle add bot form submission
+ */
+async function handleAddBotSubmit(e) {
+  e.preventDefault();
+
+  const dialog = document.getElementById('bot-config-dialog');
+  const provider = document.getElementById('bot-provider').value;
+  const name = document.getElementById('bot-name').value.trim();
+  const persona = document.getElementById('bot-persona').value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  setButtonLoading(submitBtn, true);
+
+  const config = { provider };
+  if (name) config.name = name;
+  if (persona) config.persona = persona;
 
   try {
-    const result = await apiClient.addBot(currentRoomId, playerToken);
+    const result = await apiClient.addBot(currentRoomId, playerToken, config);
 
     if (result.success) {
       showToast('AI 机器人已加入', 'success');
       gameStateManager.refresh();
+      dialog.classList.add('hidden');
     } else {
       showToast(apiClient.getErrorMessage(result.code, result.error), 'error');
     }
@@ -1532,7 +1563,7 @@ async function handleAddBot() {
     showToast('网络错误，请重试', 'error');
     console.error('Add bot error:', err);
   } finally {
-    if (btn) setButtonLoading(btn, false);
+    setButtonLoading(submitBtn, false);
   }
 }
 
