@@ -26,6 +26,7 @@ function createMockPlayerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     word_confirmed: 1,
     last_seen: Date.now(),
     join_order: 0,
+    is_bot: 0,
     ...overrides,
   };
 }

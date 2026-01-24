@@ -5,7 +5,20 @@ import { getAssetFromKV, NotFoundError, MethodNotAllowedError } from '@cloudflar
 export interface Env {
   DB: D1Database;
   __STATIC_CONTENT: KVNamespace;
+  // Admin authentication
+  ADMIN_TOKEN?: string;
+  // LLM API Keys (set via wrangler secret put)
+  OPENAI_API_KEY?: string;
+  DEEPSEEK_API_KEY?: string;
+  GEMINI_API_KEY?: string;
+  CLAUDE_API_KEY?: string;
+  QWEN_API_KEY?: string;
+  MOONSHOT_API_KEY?: string;
+  // Allow dynamic key access for new providers
+  [key: string]: unknown;
 }
+
+import { syncLLMProviders } from './api/providers';
 
 // Manifest for static assets (injected by wrangler)
 // @ts-ignore
@@ -15,12 +28,13 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    // Sync word pairs on first request (lazy initialization)
+    // Sync data on first request (lazy initialization)
     ctx.waitUntil(syncWordPairs(env.DB));
+    ctx.waitUntil(syncLLMProviders(env.DB));
 
     // Handle API routes
     if (url.pathname.startsWith('/api/')) {
-      return handleRequest(request, env);
+      return handleRequest(request, env, ctx);
     }
 
     // Serve static files from KV

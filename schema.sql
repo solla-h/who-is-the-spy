@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS players (
   word_confirmed INTEGER DEFAULT 0,
   last_seen INTEGER NOT NULL,
   join_order INTEGER NOT NULL,
+  is_bot INTEGER DEFAULT 0,
+  bot_config TEXT,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
@@ -64,6 +66,18 @@ CREATE TABLE IF NOT EXISTS word_pairs (
   spy_word TEXT NOT NULL,
   category TEXT DEFAULT 'general',
   UNIQUE(civilian_word, spy_word)
+);
+
+-- LLM Provider 配置表 (支持热更新)
+CREATE TABLE IF NOT EXISTS llm_providers (
+    id TEXT PRIMARY KEY,             -- 唯一标识 e.g. 'openai', 'deepseek'
+    name TEXT NOT NULL,              -- 显示名称 e.g. 'OpenAI (GPT-4o)'
+    api_type TEXT NOT NULL,          -- 'openai_compatible' | 'gemini_native' | 'claude_native'
+    base_url TEXT NOT NULL,          -- API 端点基础 URL
+    default_model TEXT NOT NULL,     -- 默认模型名
+    api_key_env TEXT NOT NULL,       -- 对应的环境变量名 e.g. 'OPENAI_API_KEY'
+    enabled INTEGER DEFAULT 1,       -- 是否启用
+    sort_order INTEGER DEFAULT 0     -- 前端显示排序
 );
 
 -- 索引优化查询性能

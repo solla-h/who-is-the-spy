@@ -39,6 +39,54 @@
       </div>
     </div>
 
+    <!-- Bot Config Dialog -->
+    <div id="bot-config-dialog" class="dialog-overlay hidden">
+      <div class="dialog-box bot-config-box">
+        <h3 class="dialog-title">添加 AI 玩家</h3>
+        <form id="form-add-bot" class="form-cyber">
+
+          <div class="form-group-cyber">
+            <label>选择模型</label>
+            <div class="select-wrapper">
+              <select id="bot-provider">
+                <!-- Options loaded from /api/providers -->
+                <option value="">点击加载...</option>
+              </select>
+              <div class="select-arrow">▼</div>
+            </div>
+          </div>
+
+          <div class="form-group-cyber">
+            <label>AI 昵称</label>
+            <div class="input-wrapper">
+              <input type="text" id="bot-name" placeholder="随机昵称">
+              <div class="input-line"></div>
+            </div>
+          </div>
+
+          <div class="form-group-cyber">
+            <label>角色人格</label>
+            <div class="select-wrapper">
+              <select id="bot-persona">
+                <option value="default">标准 AI（无人格）</option>
+                <option value="luxun">鲁迅（犀利讽刺）</option>
+                <option value="poet">诗人（浪漫诗意）</option>
+                <option value="detective">侦探（逻辑推理）</option>
+                <option value="child">小朋友（天真可爱）</option>
+                <option value="philosopher">哲学家（深沉抽象）</option>
+              </select>
+              <div class="select-arrow">▼</div>
+            </div>
+          </div>
+
+          <div class="dialog-buttons">
+            <button type="button" id="bot-cancel" class="btn btn-secondary">取消</button>
+            <button type="submit" class="btn btn-primary">添加</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Page: Home -->
     <div id="page-home" class="page">
       <div class="page-container-flex centered-content">
@@ -237,6 +285,12 @@
                 </div>
                 <button id="spy-increase" class="btn-step">+</button>
               </div>
+            </div>
+
+            <!-- Bot Control -->
+            <div class="glass-panel control-row">
+              <span class="control-label">AI 机器人</span>
+              <button id="btn-add-bot" class="btn-cyber-secondary btn-sm">添加 +</button>
             </div>
 
             <!-- Start Button -->

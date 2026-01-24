@@ -8,12 +8,38 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "who-is-spy-db"
-database_id = "your-actual-database-id"
+database_id = "8e112a36-6670-4293-a7fa-471953308220"
 
 # Scheduled trigger for room cleanup (runs every hour)
 # Requirements: 12.2 - Clean up rooms inactive for more than 24 hours
 [triggers]
 crons = ["0 * * * *"]
+
+# ========================================
+# AI Bot Configuration (LLM API Keys)
+# ========================================
+# API Keys must be set as Cloudflare Secrets (NOT in this file!)
+#
+# Run the following commands to set secrets:
+#   wrangler secret put ADMIN_TOKEN      # Admin panel access token
+#   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put DEEPSEEK_API_KEY
+#   wrangler secret put GEMINI_API_KEY
+#   wrangler secret put CLAUDE_API_KEY
+#   wrangler secret put QWEN_API_KEY
+#   wrangler secret put MOONSHOT_API_KEY
+#
+# For local development, create a `.dev.vars` file:
+#   ADMIN_TOKEN=your-secret-admin-token
+#   OPENAI_API_KEY=sk-...
+#   DEEPSEEK_API_KEY=sk-...
+#   GEMINI_API_KEY=AIza...
+#   CLAUDE_API_KEY=sk-ant-...
+#   QWEN_API_KEY=sk-...
+#   MOONSHOT_API_KEY=sk-...
+#
+# Admin Panel: /admin.html
+# You can manage LLM providers through the web UI without redeploying.
 
 # 自定义域名绑定（取消注释并替换为你的域名）
 # [env.production]

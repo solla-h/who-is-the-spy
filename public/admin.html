@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - LLM Provider 管理</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Admin-specific styles */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .admin-title {
+            font-size: 1.8rem;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .login-form {
+            max-width: 400px;
+            margin: 4rem auto;
+            padding: 2rem;
+            background: rgba(0, 20, 40, 0.9);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+        }
+
+        .login-form h2 {
+            text-align: center;
+            color: var(--neon-cyan);
+            margin-bottom: 1.5rem;
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .login-form button {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-form button:hover {
+            box-shadow: 0 0 20px var(--neon-cyan);
+            transform: translateY(-2px);
+        }
+
+        .provider-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .provider-table th,
+        .provider-table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .provider-table th {
+            background: rgba(0, 255, 255, 0.1);
+            color: var(--neon-cyan);
+            font-weight: 600;
+        }
+
+        .provider-table tr:hover {
+            background: rgba(0, 255, 255, 0.05);
+        }
+
+        .provider-table input,
+        .provider-table select {
+            width: 100%;
+            padding: 0.4rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .btn-icon {
+            padding: 0.4rem 0.8rem;
+            margin: 0 0.2rem;
+            background: transparent;
+            border: 1px solid;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+        }
+
+        .btn-save {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .btn-save:hover {
+            background: var(--neon-green);
+            color: black;
+        }
+
+        .btn-delete {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        .btn-delete:hover {
+            background: var(--neon-pink);
+            color: black;
+        }
+
+        .btn-toggle {
+            border-color: var(--neon-orange);
+            color: var(--neon-orange);
+        }
+
+        .btn-toggle:hover {
+            background: var(--neon-orange);
+            color: black;
+        }
+
+        .btn-add {
+            padding: 0.6rem 1.2rem;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add:hover {
+            box-shadow: 0 0 15px var(--neon-cyan);
+        }
+
+        .status-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .status-enabled {
+            background: rgba(0, 255, 100, 0.2);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+
+        .status-disabled {
+            background: rgba(255, 100, 100, 0.2);
+            color: var(--neon-pink);
+            border: 1px solid var(--neon-pink);
+        }
+
+        .add-form {
+            display: none;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(0, 20, 40, 0.9);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 8px;
+        }
+
+        .add-form.show {
+            display: block;
+        }
+
+        .add-form h3 {
+            color: var(--neon-cyan);
+            margin-bottom: 1rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-row label {
+            display: block;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+            margin-bottom: 0.3rem;
+        }
+
+        .form-row input,
+        .form-row select {
+            width: 100%;
+            padding: 0.6rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 4px;
+            color: white;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, var(--neon-green), #00aa55);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, var(--neon-pink), #cc0055);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: var(--neon-pink);
+            color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-container">
+        <!-- Login Form -->
+        <div id="login-section">
+            <div class="login-form">
+                <h2>🔐 管理员登录</h2>
+                <input type="password" id="admin-token" placeholder="输入 Admin Token">
+                <button onclick="login()">登录</button>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="admin-section" class="hidden">
+            <div class="admin-header">
+                <h1 class="admin-title">⚙️ LLM Provider 管理</h1>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+
+            <button class="btn-add" onclick="toggleAddForm()">+ 添加新 Provider</button>
+
+            <!-- Add Provider Form -->
+            <div id="add-form" class="add-form">
+                <h3>添加新 Provider</h3>
+                <div class="form-row">
+                    <div>
+                        <label>ID (唯一标识)</label>
+                        <input type="text" id="new-id" placeholder="e.g. zhipu">
+                    </div>
+                    <div>
+                        <label>显示名称</label>
+                        <input type="text" id="new-name" placeholder="e.g. 智谱 AI">
+                    </div>
+                    <div>
+                        <label>API 类型</label>
+                        <select id="new-api-type">
+                            <option value="openai_compatible">OpenAI 兼容</option>
+                            <option value="gemini_native">Gemini 原生</option>
+                            <option value="claude_native">Claude 原生</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label>Base URL</label>
+                        <input type="text" id="new-base-url" placeholder="e.g. https://api.example.com">
+                    </div>
+                    <div>
+                        <label>默认模型</label>
+                        <input type="text" id="new-model" placeholder="e.g. model-name">
+                    </div>
+                    <div>
+                        <label>API Key 环境变量名</label>
+                        <input type="text" id="new-api-key-env" placeholder="e.g. ZHIPU_API_KEY">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div>
+                        <label>排序 (越小越靠前)</label>
+                        <input type="number" id="new-sort-order" value="10">
+                    </div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <button class="btn-add" onclick="addProvider()">添加</button>
+                    <button class="btn-icon btn-delete" onclick="toggleAddForm()">取消</button>
+                </div>
+            </div>
+
+            <!-- Provider Table -->
+            <table class="provider-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>名称</th>
+                        <th>API 类型</th>
+                        <th>Base URL</th>
+                        <th>默认模型</th>
+                        <th>API Key 环境变量</th>
+                        <th>排序</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="provider-list">
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 2rem;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = localStorage.getItem('adminToken') || '';
+
+        // Check if already logged in
+        if (adminToken) {
+            tryAutoLogin();
+        }
+
+        async function tryAutoLogin() {
+            const res = await fetch('/api/admin/providers', {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            if (res.ok) {
+                showAdminPanel();
+                loadProviders();
+            } else {
+                localStorage.removeItem('adminToken');
+                adminToken = '';
+            }
+        }
+
+        async function login() {
+            adminToken = document.getElementById('admin-token').value.trim();
+            if (!adminToken) {
+                showToast('请输入 Admin Token', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/admin/providers', {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+
+            if (res.ok) {
+                localStorage.setItem('adminToken', adminToken);
+                showAdminPanel();
+                loadProviders();
+                showToast('登录成功', 'success');
+            } else {
+                showToast('Token 无效', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            adminToken = '';
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('admin-section').classList.add('hidden');
+        }
+
+        function showAdminPanel() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('admin-section').classList.remove('hidden');
+        }
+
+        async function loadProviders() {
+            const res = await fetch('/api/admin/providers', {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            const data = await res.json();
+
+            if (!data.success) {
+                showToast('加载失败: ' + data.error, 'error');
+                return;
+            }
+
+            const tbody = document.getElementById('provider-list');
+            if (data.providers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem;">暂无 Provider</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.providers.map(p => `
+        <tr data-id="${p.id}">
+          <td><code>${p.id}</code></td>
+          <td><input type="text" value="${escapeHtml(p.name)}" data-field="name"></td>
+          <td>
+            <select data-field="api_type">
+              <option value="openai_compatible" ${p.api_type === 'openai_compatible' ? 'selected' : ''}>OpenAI 兼容</option>
+              <option value="gemini_native" ${p.api_type === 'gemini_native' ? 'selected' : ''}>Gemini 原生</option>
+              <option value="claude_native" ${p.api_type === 'claude_native' ? 'selected' : ''}>Claude 原生</option>
+            </select>
+          </td>
+          <td><input type="text" value="${escapeHtml(p.base_url)}" data-field="base_url"></td>
+          <td><input type="text" value="${escapeHtml(p.default_model)}" data-field="default_model"></td>
+          <td><input type="text" value="${escapeHtml(p.api_key_env)}" data-field="api_key_env"></td>
+          <td><input type="number" value="${p.sort_order}" data-field="sort_order" style="width: 60px;"></td>
+          <td>
+            <span class="status-badge ${p.enabled ? 'status-enabled' : 'status-disabled'}">
+              ${p.enabled ? '启用' : '禁用'}
+            </span>
+          </td>
+          <td>
+            <button class="btn-icon btn-save" onclick="saveProvider('${p.id}')">保存</button>
+            <button class="btn-icon btn-toggle" onclick="toggleProvider('${p.id}', ${p.enabled})">${p.enabled ? '禁用' : '启用'}</button>
+            <button class="btn-icon btn-delete" onclick="deleteProvider('${p.id}')">删除</button>
+          </td>
+        </tr>
+      `).join('');
+        }
+
+        async function saveProvider(id) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            const updates = {};
+
+            row.querySelectorAll('[data-field]').forEach(el => {
+                const field = el.dataset.field;
+                let value = el.value;
+                if (field === 'sort_order') value = parseInt(value);
+                updates[field] = value;
+            });
+
+            const res = await fetch(`/api/admin/providers/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('保存成功', 'success');
+            } else {
+                showToast('保存失败: ' + data.error, 'error');
+            }
+        }
+
+        async function toggleProvider(id, currentEnabled) {
+            const res = await fetch(`/api/admin/providers/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ enabled: currentEnabled ? 0 : 1 })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                loadProviders();
+                showToast(currentEnabled ? '已禁用' : '已启用', 'success');
+            } else {
+                showToast('操作失败: ' + data.error, 'error');
+            }
+        }
+
+        async function deleteProvider(id) {
+            if (!confirm(`确定要删除 Provider "${id}" 吗？`)) return;
+
+            const res = await fetch(`/api/admin/providers/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                loadProviders();
+                showToast('删除成功', 'success');
+            } else {
+                showToast('删除失败: ' + data.error, 'error');
+            }
+        }
+
+        function toggleAddForm() {
+            document.getElementById('add-form').classList.toggle('show');
+        }
+
+        async function addProvider() {
+            const provider = {
+                id: document.getElementById('new-id').value.trim(),
+                name: document.getElementById('new-name').value.trim(),
+                api_type: document.getElementById('new-api-type').value,
+                base_url: document.getElementById('new-base-url').value.trim(),
+                default_model: document.getElementById('new-model').value.trim(),
+                api_key_env: document.getElementById('new-api-key-env').value.trim(),
+                sort_order: parseInt(document.getElementById('new-sort-order').value) || 10,
+                enabled: 1
+            };
+
+            if (!provider.id || !provider.name || !provider.base_url || !provider.default_model || !provider.api_key_env) {
+                showToast('请填写所有必填字段', 'error');
+                return;
+            }
+
+            const res = await fetch('/api/admin/providers', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(provider)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                loadProviders();
+                toggleAddForm();
+                // Clear form
+                ['new-id', 'new-name', 'new-base-url', 'new-model', 'new-api-key-env'].forEach(id => {
+                    document.getElementById(id).value = '';
+                });
+                document.getElementById('new-sort-order').value = '10';
+                showToast('添加成功', 'success');
+            } else {
+                showToast('添加失败: ' + data.error, 'error');
+            }
+        }
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

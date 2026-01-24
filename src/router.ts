@@ -4,10 +4,13 @@
 
 import type { Env } from './index';
 import { createRoom, joinRoom } from './api/room';
+import { addBot } from './api/bot';
+import { getProviders } from './api/providers';
+import { getAllProviders, addProvider, updateProvider, deleteProvider } from './api/admin';
 import { getRoomState } from './api/state';
 import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, confirmWordPlayer, submitVote, finalizeVoting, continueGame, restartGame, updateSettings, kickPlayer } from './api/game';
 
-export async function handleRequest(request: Request, env: Env): Promise<Response> {
+export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
@@ -15,8 +18,8 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   // Add CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 
   // Handle preflight requests
@@ -34,6 +37,53 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
 
     if (path === '/api/room/join' && method === 'POST') {
       const result = await joinRoom(request, env);
+      const status = result.success ? 200 : getErrorStatus(result.code);
+      return jsonResponse(result, status, corsHeaders);
+    }
+
+    // LLM Providers route (for dynamic provider list)
+    if (path === '/api/providers' && method === 'GET') {
+      const result = await getProviders(env);
+      return jsonResponse(result, result.success ? 200 : 500, corsHeaders);
+    }
+
+    // Admin routes for managing providers
+    if (path === '/api/admin/providers') {
+      if (method === 'GET') {
+        const result = await getAllProviders(request, env);
+        return jsonResponse(result, result.success ? 200 : 401, corsHeaders);
+      }
+      if (method === 'POST') {
+        const result = await addProvider(request, env);
+        return jsonResponse(result, result.success ? 201 : 400, corsHeaders);
+      }
+    }
+
+    const adminProviderMatch = path.match(/^\/api\/admin\/providers\/([^/]+)$/);
+    if (adminProviderMatch) {
+      const providerId = adminProviderMatch[1];
+      if (method === 'PUT') {
+        const result = await updateProvider(request, env, providerId);
+        return jsonResponse(result, result.success ? 200 : 400, corsHeaders);
+      }
+      if (method === 'DELETE') {
+        const result = await deleteProvider(request, env, providerId);
+        return jsonResponse(result, result.success ? 200 : 400, corsHeaders);
+      }
+    }
+
+    // Bot route
+    const botMatch = path.match(/^\/api\/room\/([^/]+)\/bot$/);
+    if (botMatch && method === 'POST') {
+      const roomId = botMatch[1];
+      const body = await request.json() as { token: string; config?: any };
+      const { token, config } = body;
+
+      if (!token) {
+        return jsonResponse({ success: false, error: '缺少token参数', code: 'INVALID_INPUT' }, 400, corsHeaders);
+      }
+
+      const result = await addBot(roomId, token, env, config);
       const status = result.success ? 200 : getErrorStatus(result.code);
       return jsonResponse(result, status, corsHeaders);
     }
@@ -78,7 +128,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
             return jsonResponse(result, status, corsHeaders);
           }
           case 'confirm-word': {
-            const result = await confirmWord(roomId, token, env);
+            const result = await confirmWord(roomId, token, env, ctx);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
@@ -92,17 +142,17 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
             if (!text) {
               return jsonResponse({ success: false, error: '缺少描述文本', code: 'INVALID_INPUT' }, 400, corsHeaders);
             }
-            const result = await submitDescription(roomId, token, text, env);
+            const result = await submitDescription(roomId, token, text, env, ctx);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
           case 'next-player': {
-            const result = await skipPlayer(roomId, token, env);
+            const result = await skipPlayer(roomId, token, env, ctx);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
           case 'start-voting': {
-            const result = await startVoting(roomId, token, env);
+            const result = await startVoting(roomId, token, env, ctx);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
@@ -121,7 +171,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
             return jsonResponse(result, status, corsHeaders);
           }
           case 'continue-game': {
-            const result = await continueGame(roomId, token, env);
+            const result = await continueGame(roomId, token, env, ctx);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }

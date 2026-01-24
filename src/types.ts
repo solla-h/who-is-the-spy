@@ -51,6 +51,8 @@ export interface PlayerRow {
   word_confirmed: number; // SQLite boolean - whether player confirmed seeing their word
   last_seen: number;
   join_order: number;
+  is_bot: number; // SQLite boolean
+  bot_config?: string;
 }
 
 export interface DescriptionRow {
@@ -76,6 +78,20 @@ export interface WordPairRow {
   civilian_word: string;
   spy_word: string;
   category: string;
+}
+
+// LLM Provider 配置
+export type LLMApiType = 'openai_compatible' | 'gemini_native' | 'claude_native';
+
+export interface LLMProviderRow {
+  id: string;
+  name: string;
+  api_type: LLMApiType;
+  base_url: string;
+  default_model: string;
+  api_key_env: string;
+  enabled: number; // SQLite boolean
+  sort_order: number;
 }
 
 // API Request/Response types

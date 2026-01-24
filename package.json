@@ -11,7 +11,7 @@
     "db:migrate": "wrangler d1 execute who-is-spy-db --local --file=./schema.sql"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240117.0",
+    "@cloudflare/workers-types": "^4.20260124.0",
     "fast-check": "^3.15.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0",

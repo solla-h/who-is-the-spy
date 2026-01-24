@@ -23,8 +23,10 @@ function createMockPlayerRow(overrides: Partial<PlayerRow> = {}): PlayerRow {
     role: null,
     is_alive: 1,
     is_online: 1,
+    word_confirmed: 1,
     last_seen: Date.now(),
     join_order: 0,
+    is_bot: 0,
     ...overrides,
   };
 }
@@ -66,7 +68,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 3, max: 10 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           // Create players with various states
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
@@ -78,7 +80,7 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           // Create room in various phases
           const room = createMockRoomRow({
             id: roomId,
@@ -93,10 +95,10 @@ describe('Property 17: Game Restart State Reset', () => {
             current_turn: 3,
             round: 5,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // Room phase should always be 'waiting'
           expect(output.room.phase).toBe('waiting');
         }
@@ -118,7 +120,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 0, max: 9 }),  // current_turn
         (initialPhase, playerCount, round, currentTurn) => {
           const roomId = crypto.randomUUID();
-          
+
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
               id: `player-${i}`,
@@ -129,7 +131,7 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
@@ -142,10 +144,10 @@ describe('Property 17: Game Restart State Reset', () => {
             current_turn: currentTurn,
             round: round,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // All game-specific state should be cleared
           expect(output.room.civilian_word).toBeNull();
           expect(output.room.spy_word).toBeNull();
@@ -169,7 +171,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 3, max: 15 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
               id: `player-${i}`,
@@ -180,23 +182,23 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // All players should be retained
           expect(output.players.length).toBe(playerCount);
-          
+
           // Player IDs should match
           const inputIds = players.map(p => p.id).sort();
           const outputIds = output.players.map(p => p.id).sort();
           expect(outputIds).toEqual(inputIds);
-          
+
           // Player names should be preserved
           for (const player of players) {
             const outputPlayer = output.players.find(p => p.id === player.id);
@@ -220,7 +222,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 3, max: 10 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           // Create players with assigned roles
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
@@ -232,15 +234,15 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // All player roles should be null
           for (const player of output.players) {
             expect(player.role).toBeNull();
@@ -264,7 +266,7 @@ describe('Property 17: Game Restart State Reset', () => {
         (initialPhase, playerCount, aliveStates) => {
           const roomId = crypto.randomUUID();
           const actualPlayerCount = Math.min(playerCount, aliveStates.length);
-          
+
           // Create players with various alive states
           const players: PlayerRow[] = Array.from({ length: actualPlayerCount }, (_, i) =>
             createMockPlayerRow({
@@ -276,15 +278,15 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // All players should be alive (is_alive = 1)
           for (const player of output.players) {
             expect(player.is_alive).toBe(1);
@@ -306,7 +308,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 3, max: 10 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
               id: `player-${i}`,
@@ -315,15 +317,15 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           // Descriptions and votes should be marked as cleared
           expect(output.descriptionsCleared).toBe(true);
           expect(output.votesCleared).toBe(true);
@@ -344,7 +346,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 3, max: 10 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
               id: `player-${i}`,
@@ -355,17 +357,17 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
             civilian_word: '苹果',
             spy_word: '梨子',
           });
-          
+
           const input: GameResetInput = { room, players };
           const output1 = computeGameReset(input);
-          
+
           // Create a "reset" room and players based on first output
           const resetPlayers: PlayerRow[] = output1.players.map((p, i) =>
             createMockPlayerRow({
@@ -377,7 +379,7 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const resetRoom = createMockRoomRow({
             id: roomId,
             phase: output1.room.phase,
@@ -387,10 +389,10 @@ describe('Property 17: Game Restart State Reset', () => {
             current_turn: output1.room.current_turn,
             round: output1.room.round,
           });
-          
+
           const input2: GameResetInput = { room: resetRoom, players: resetPlayers };
           const output2 = computeGameReset(input2);
-          
+
           // Both outputs should be equivalent
           expect(output2.room).toEqual(output1.room);
           expect(output2.players.length).toBe(output1.players.length);
@@ -413,7 +415,7 @@ describe('Property 17: Game Restart State Reset', () => {
         fc.integer({ min: 1, max: 20 }),
         (initialPhase, playerCount) => {
           const roomId = crypto.randomUUID();
-          
+
           const players: PlayerRow[] = Array.from({ length: playerCount }, (_, i) =>
             createMockPlayerRow({
               id: `player-${i}`,
@@ -422,15 +424,15 @@ describe('Property 17: Game Restart State Reset', () => {
               join_order: i,
             })
           );
-          
+
           const room = createMockRoomRow({
             id: roomId,
             phase: initialPhase,
           });
-          
+
           const input: GameResetInput = { room, players };
           const output = computeGameReset(input);
-          
+
           expect(output.players.length).toBe(playerCount);
         }
       ),
