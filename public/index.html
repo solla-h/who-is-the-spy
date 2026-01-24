@@ -39,53 +39,7 @@
       </div>
     </div>
 
-    <!-- Bot Config Dialog -->
-    <div id="bot-config-dialog" class="dialog-overlay hidden">
-      <div class="dialog-box bot-config-box">
-        <h3 class="dialog-title">添加 AI 玩家</h3>
-        <form id="form-add-bot" class="form-cyber">
 
-          <div class="form-group-cyber">
-            <label>选择模型</label>
-            <div class="select-wrapper">
-              <select id="bot-provider">
-                <!-- Options loaded from /api/providers -->
-                <option value="">点击加载...</option>
-              </select>
-              <div class="select-arrow">▼</div>
-            </div>
-          </div>
-
-          <div class="form-group-cyber">
-            <label>AI 昵称</label>
-            <div class="input-wrapper">
-              <input type="text" id="bot-name" placeholder="随机昵称">
-              <div class="input-line"></div>
-            </div>
-          </div>
-
-          <div class="form-group-cyber">
-            <label>角色人格</label>
-            <div class="select-wrapper">
-              <select id="bot-persona">
-                <option value="default">标准 AI（无人格）</option>
-                <option value="luxun">鲁迅（犀利讽刺）</option>
-                <option value="poet">诗人（浪漫诗意）</option>
-                <option value="detective">侦探（逻辑推理）</option>
-                <option value="child">小朋友（天真可爱）</option>
-                <option value="philosopher">哲学家（深沉抽象）</option>
-              </select>
-              <div class="select-arrow">▼</div>
-            </div>
-          </div>
-
-          <div class="dialog-buttons">
-            <button type="button" id="bot-cancel" class="btn btn-secondary">取消</button>
-            <button type="submit" class="btn btn-primary">添加</button>
-          </div>
-        </form>
-      </div>
-    </div>
 
     <!-- Page: Home -->
     <div id="page-home" class="page">
@@ -289,7 +243,7 @@
 
             <!-- Bot Control -->
             <div class="glass-panel control-row">
-              <span class="control-label">AI 机器人</span>
+              <span class="control-label" style="white-space: nowrap;">AI 机器人</span>
               <button id="btn-add-bot" class="btn-cyber-secondary btn-sm">添加 +</button>
             </div>
 
@@ -505,23 +459,23 @@
     </div>
   </div>
 
-  <!-- Bot Configuration Dialog -->
-  <div id="bot-config-dialog" class="modal-overlay hidden">
-    <div class="modal-content cyber-card">
-      <h3 class="modal-title">添加 AI 玩家</h3>
+  <!-- Bot Config Dialog -->
+  <div id="bot-config-dialog" class="dialog-overlay hidden">
+    <div class="dialog-box bot-config-box" style="width: 320px;">
+      <h3 class="dialog-title" style="margin-bottom: 24px;">添加 AI 玩家</h3>
       <form id="form-add-bot" class="form-cyber">
         <div class="form-group-cyber">
-          <label for="bot-provider" class="label-cyber">选择模型</label>
+          <label for="bot-provider" class="control-label" style="text-align: left; display: block;">选择模型</label>
           <div class="input-wrapper">
-            <select id="bot-provider" class="select-cyber">
+            <select id="bot-provider" class="input-cyber"
+              style="width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue); color: white;">
               <option value="">加载中...</option>
             </select>
-            <div class="input-line"></div>
           </div>
         </div>
 
         <div class="form-group-cyber">
-          <label for="bot-name" class="label-cyber">AI 昵称</label>
+          <label for="bot-name" class="control-label" style="text-align: left; display: block;">AI 昵称</label>
           <div class="input-wrapper">
             <input type="text" id="bot-name" placeholder="随机昵称" class="input-cyber">
             <div class="input-line"></div>
@@ -529,9 +483,10 @@
         </div>
 
         <div class="form-group-cyber">
-          <label for="bot-persona" class="label-cyber">角色人格</label>
+          <label for="bot-persona" class="control-label" style="text-align: left; display: block;">角色人格</label>
           <div class="input-wrapper">
-            <select id="bot-persona" class="select-cyber">
+            <select id="bot-persona" class="input-cyber"
+              style="width: 100%; padding: 10px; background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue); color: white;">
               <option value="default">默认 (普通玩家)</option>
               <option value="luxun">鲁迅 (犀利讽刺)</option>
               <option value="poet">古诗人 (文言文)</option>
@@ -540,13 +495,12 @@
               <option value="philosopher">哲学家 (深度思考)</option>
               <option value="debater">杠精 (喜欢反驳)</option>
             </select>
-            <div class="input-line"></div>
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button type="button" id="bot-cancel" class="btn-cyber-secondary">取消</button>
-          <button type="submit" class="btn-cyber-primary">添加</button>
+        <div class="dialog-buttons">
+          <button type="button" id="bot-cancel" class="btn-cyber-secondary btn-sm" style="flex: 1;">取消</button>
+          <button type="submit" class="btn-cyber-primary btn-sm" style="flex: 1;">添加</button>
         </div>
       </form>
     </div>
