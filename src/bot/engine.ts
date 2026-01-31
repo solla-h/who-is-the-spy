@@ -121,10 +121,10 @@ async function handleDescriptionPhase(
             .replace('{{ROUND}}', String(state.round))
             .replace('{{ALIVE_COUNT}}', String(aliveCount))
             .replace('{{SPY_COUNT}}', String(state.settings.spyCount))
-            .replace('{{MY_WORD}}', state.myWord || 'Unknown')
+            .replace(/\{\{MY_WORD\}\}/g, state.myWord || 'Unknown')
             .replace('{{HISTORY}}', historyText);
 
-        const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+        const systemPromptBase = SYSTEM_PROMPT.replace(/\{\{MY_WORD\}\}/g, state.myWord || 'Unknown');
         const systemPrompt = botConfig.persona
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
@@ -230,11 +230,11 @@ async function handleVotingPhase(
 
         const userPrompt = VOTE_PROMPT
             .replace('{{ROUND}}', String(state.round))
-            .replace('{{MY_WORD}}', state.myWord || 'Unknown')
+            .replace(/\{\{MY_WORD\}\}/g, state.myWord || 'Unknown')
             .replace('{{PLAYER_LIST}}', playerListText)
             .replace('{{MY_ID}}', botId);
 
-        const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
+        const systemPromptBase = SYSTEM_PROMPT.replace(/\{\{MY_WORD\}\}/g, state.myWord || 'Unknown');
         const systemPrompt = botConfig.persona
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
