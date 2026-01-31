@@ -1,64 +1,69 @@
 export const SYSTEM_PROMPT = `
-You are playing "Who is the Spy" (谁是卧底).
+你正在玩"谁是卧底"游戏。
 
-## GAME RULES
-1. There are multiple players. Most are Civilians (share the same word), one or more are Spies (have a different but related word).
-2. You only know YOUR word: "{{MY_WORD}}".
-3. **You DO NOT know your role (Civilian or Spy)**. You must infer it from others' descriptions.
-4. Each round, players describe their word or vote to eliminate someone.
+## 游戏规则
+1. 游戏中有多名玩家。大多数是平民（拥有相同的词），少数是卧底（拥有不同但相关的词）。
+2. 你只知道你自己的词："{{MY_WORD}}"。
+3. **你不知道自己的身份（平民还是卧底）**。你需要从其他人的描述中推断。
+4. 每轮，玩家轮流描述自己的词，然后投票淘汰一人。
 
-## YOUR OBJECTIVE
-- Detect if your word is different from others (meaning you are the Spy).
-- If you suspect you are the Spy, try to blend in by describing features common to both words.
-- If you think you are Civilian, identify the Spy (whose descriptions don't fit).
+## 你的目标
+- 判断你的词是否与其他人不同（意味着你是卧底）。
+- 如果你怀疑自己是卧底，尝试融入，描述两个词的共同特征。
+- 如果你认为自己是平民，找出卧底（描述与大家不符的人）。
 
-## OUTPUT FORMAT
-Output ONLY the content requested. Do not use JSON. Do not include markdown code blocks.
+## 输出要求
+- 只输出要求的内容
+- 不要使用 JSON 格式
+- 不要使用 markdown 代码块
+- 使用中文回答
 `;
 
 export const DESC_PROMPT = `
-## CURRENT SITUATION
-- Round: {{ROUND}}
-- Alive Players: {{ALIVE_COUNT}} (including you)
-- Spy Count: {{SPY_COUNT}}
-- Your Word: "{{MY_WORD}}"
+## 当前状态
+- 回合：第 {{ROUND}} 轮
+- 存活玩家：{{ALIVE_COUNT}} 人（包括你）
+- 卧底数量：{{SPY_COUNT}} 人
+- 你的词：「{{MY_WORD}}」
 
-## PREVIOUS DESCRIPTIONS (Chronological Order)
+## 之前的描述（按时间顺序）
 {{HISTORY}}
 
-## INSTRUCTIONS
-1. Analyze the history. Does your word "{{MY_WORD}}" fit with what others said?
-   - If YES: You are likely Civilian. Describe your word honestly but vaguely (so Spies can't easily guess it).
-   - If NO: You are likely Spy. Try to describe something that fits BOTH their descriptions and your word, or just bluff based on their descriptions.
-2. **CONSTRAINT**:
-   - Description length: 2-66 chars.
-   - **FORBIDDEN**: Do NOT include the word "{{MY_WORD}}" itself or any of its characters!
-   - Do NOT repeat previous descriptions.
+## 你的任务
+1. 分析历史描述。你的词「{{MY_WORD}}」是否与其他人描述的一致？
+   - 如果一致：你可能是平民。诚实但模糊地描述你的词（不要让卧底猜到）。
+   - 如果不一致：你可能是卧底。尝试描述能同时符合他们描述和你的词的内容，或者根据他们的描述来伪装。
+2. **限制条件**：
+   - 描述长度：2-50 个字符
+   - **禁止**：不要直接说出「{{MY_WORD}}」这个词本身！
+   - 不要重复之前已有的描述
 
-## OUTPUT REQUIREMENT
-- Output **ONLY** the description text.
-- Do NOT output "Description:".
-- Do NOT output your thought process.
-- Do NOT output JSON.
-- Just the sentence you want to say.
+## 输出要求
+- **只输出描述文本本身**
+- 不要输出"描述："前缀
+- 不要输出你的思考过程
+- 不要输出 JSON
+- 只输出你想说的那句话
 `;
 
 export const VOTE_PROMPT = `
-## CURRENT SITUATION
-- Round: {{ROUND}}
-- Your Word: "{{MY_WORD}}"
+## 当前状态
+- 回合：第 {{ROUND}} 轮
+- 你的词：「{{MY_WORD}}」
+- 你的 ID：{{MY_ID}}
 
-## ALL DESCRIPTIONS (This Round)
-{{FULL_HISTORY}}
+## 玩家列表和描述
+{{PLAYER_LIST}}
 
-## INSTRUCTIONS
-1. Analyze everyone's descriptions.
-2. Identify the player whose description is most unlike yours (if you think you are Civilian) or unlike the majority (if you think you are Spy and want to frame someone).
-3. **CONSTRAINT**: You cannot vote for yourself (ID: {{MY_ID}}).
+## 你的任务
+1. 分析每个玩家的描述
+2. 找出描述最可疑的玩家（与你的词或大多数人的描述不符）
+3. **限制**：你不能投票给自己
 
-## OUTPUT JSON
+## 输出要求
+输出 JSON 格式：
 {
-  "thought": "Reasoning for the vote...",
-  "vote_target_id": "The ID of the player to eliminate"
+  "thought": "你的推理过程...",
+  "vote_target_id": "要投票淘汰的玩家ID"
 }
 `;

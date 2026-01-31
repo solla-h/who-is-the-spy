@@ -219,12 +219,19 @@ async function handleVotingPhase(
     };
 
     try {
-        const historyText = state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n');
+        // 构建玩家列表（包含 ID 和描述）
+        const alivePlayers = state.players.filter((p: any) => p.isAlive);
+        const playerListText = alivePlayers.map((p: any) => {
+            const desc = state.descriptions.find((d: any) => d.playerId === p.id);
+            const descText = desc ? desc.text : '(未发言)';
+            const selfMark = p.id === botId ? ' [你自己]' : '';
+            return `- ${p.name} (ID: ${p.id})${selfMark}: "${descText}"`;
+        }).join('\n');
 
         const userPrompt = VOTE_PROMPT
             .replace('{{ROUND}}', String(state.round))
             .replace('{{MY_WORD}}', state.myWord || 'Unknown')
-            .replace('{{FULL_HISTORY}}', historyText)
+            .replace('{{PLAYER_LIST}}', playerListText)
             .replace('{{MY_ID}}', botId);
 
         const systemPromptBase = SYSTEM_PROMPT.replace('{{MY_WORD}}', state.myWord || 'Unknown');
