@@ -218,6 +218,9 @@ async function handleVotingPhase(
 
 // --- LLM Caller with Dynamic Provider Config ---
 
+// LLM 调用超时时间（毫秒）- 留 5 秒余量给 Workers 的 30 秒限制
+const LLM_TIMEOUT_MS = 25000;
+
 async function callLLM(
     env: Env,
     system: string,
@@ -249,77 +252,97 @@ async function callLLM(
 
     const { api_type, base_url, default_model } = providerConfig;
 
-    // 1. OpenAI Compatible (Default, works with DeepSeek, Qwen, Moonshot, etc.)
-    // Note: Some proxies have issues with 'system' role, so we embed system prompt into user message
-    if (api_type === 'openai_compatible') {
-        const combinedUserMessage = `[System Instructions]\n${system}\n\n[Your Task]\n${user}`;
+    // 创建超时控制器
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        console.warn(`[LLM] Request timeout after ${LLM_TIMEOUT_MS}ms, aborting...`);
+        controller.abort();
+    }, LLM_TIMEOUT_MS);
 
-        const resp = await fetch(`${base_url}/v1/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: default_model,
-                messages: [
-                    { role: 'user', content: combinedUserMessage }
-                ],
-                temperature: 0.9,
-                max_tokens: 32000 //Increased for DeepSeek R1 thinking process
-            })
-        });
+    try {
+        // 1. OpenAI Compatible (Default, works with DeepSeek, Qwen, Moonshot, etc.)
+        // Note: Some proxies have issues with 'system' role, so we embed system prompt into user message
+        if (api_type === 'openai_compatible') {
+            const combinedUserMessage = `[System Instructions]\n${system}\n\n[Your Task]\n${user}`;
 
-        if (!resp.ok) {
-            const errorBody = await resp.text();
-            throw new Error(`${providerConfig.id} API Error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+            const resp = await fetch(`${base_url}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: default_model,
+                    messages: [
+                        { role: 'user', content: combinedUserMessage }
+                    ],
+                    temperature: 0.9,
+                    max_tokens: 32000 //Increased for DeepSeek R1 thinking process
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) {
+                const errorBody = await resp.text();
+                throw new Error(`${providerConfig.id} API Error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+            }
+            const data = await resp.json() as any;
+            return data.choices?.[0]?.message?.content || "{}";
         }
-        const data = await resp.json() as any;
-        return data.choices?.[0]?.message?.content || "{}";
+
+        // 2. Google Gemini (native REST API)
+        if (api_type === 'gemini_native') {
+            const url = `${base_url}/models/${default_model}:generateContent?key=${apiKey}`;
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: system + "\n\n" + user }]
+                    }]
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) throw new Error(`Gemini API Error: ${resp.status} ${await resp.text()}`);
+            const data = await resp.json() as any;
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        }
+
+        // 3. Anthropic Claude
+        if (api_type === 'claude_native') {
+            const resp = await fetch(`${base_url}/v1/messages`, {
+                method: 'POST',
+                headers: {
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: default_model,
+                    max_tokens: 1024,
+                    system: system,
+                    messages: [{ role: 'user', content: user }]
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) throw new Error(`Claude API Error: ${resp.status} ${await resp.text()}`);
+            const data = await resp.json() as any;
+            return data.content?.[0]?.text || "{}";
+        }
+
+        throw new Error(`Unsupported api_type: ${api_type}`);
+    } catch (error: any) {
+        // 处理超时错误
+        if (error.name === 'AbortError') {
+            throw new Error(`LLM request timeout after ${LLM_TIMEOUT_MS / 1000}s`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);  // 清理超时定时器
     }
-
-    // 2. Google Gemini (native REST API)
-    if (api_type === 'gemini_native') {
-        const url = `${base_url}/models/${default_model}:generateContent?key=${apiKey}`;
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{ text: system + "\n\n" + user }]
-                }]
-            })
-        });
-
-        if (!resp.ok) throw new Error(`Gemini API Error: ${resp.status} ${await resp.text()}`);
-        const data = await resp.json() as any;
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    }
-
-    // 3. Anthropic Claude
-    if (api_type === 'claude_native') {
-        const resp = await fetch(`${base_url}/v1/messages`, {
-            method: 'POST',
-            headers: {
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: default_model,
-                max_tokens: 1024,
-                system: system,
-                messages: [{ role: 'user', content: user }]
-            })
-        });
-
-        if (!resp.ok) throw new Error(`Claude API Error: ${resp.status} ${await resp.text()}`);
-        const data = await resp.json() as any;
-        return data.content?.[0]?.text || "{}";
-    }
-
-    throw new Error(`Unsupported api_type: ${api_type}`);
 }
 
 function cleanResponse(text: string): string {
