@@ -6,10 +6,11 @@ import { SYSTEM_PROMPT, DESC_PROMPT, VOTE_PROMPT } from './prompts';
 import { getPersonaById } from './personas';
 import { PlayerRow, LLMProviderRow } from '../types';
 
-export async function runBotTurn(env: Env, roomId: string, botId: string) {
+export async function runBotTurn(env: Env, roomId: string, botId: string, origin: string) {
     try {
         // 1. Get Context
         // Fetch bot token and config
+        console.log(`[Bot ${botId}] Running turn with origin: ${origin}`);
         const bot = await env.DB.prepare('SELECT token, bot_config FROM players WHERE id = ?').bind(botId).first<PlayerRow>();
         if (!bot) throw new Error(`Bot ${botId} not found`);
         const botToken = bot.token;
@@ -36,23 +37,23 @@ export async function runBotTurn(env: Env, roomId: string, botId: string) {
         // 2. Get Provider config from database
         const providerConfig = await getProviderById(env, botConfig.provider);
         if (!providerConfig) {
-            console.error(`[Bot] Provider "${botConfig.provider}" not found in database, falling back to openai`);
+            console.error(`[Bot] Provider "${botConfig.provider}" not found, using openai`);
             // Fallback to a default
             botConfig.provider = 'openai';
         }
 
         const stateResult = await getRoomState(roomId, botToken, env);
         if (!stateResult.success || !stateResult.state) {
-            throw new Error(`Failed to get state for bot ${botId}: ${stateResult.error}`);
+            throw new Error(`Failed to get state: ${stateResult.error}`);
         }
         const state = stateResult.state;
 
         // Check if it's actually my turn (double check to avoid race conditions is handled by API)
 
         if (state.phase === 'description') {
-            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig, providerConfig);
+            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin);
         } else if (state.phase === 'voting') {
-            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig, providerConfig);
+            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin);
         }
     } catch (error) {
         console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
@@ -61,9 +62,9 @@ export async function runBotTurn(env: Env, roomId: string, botId: string) {
 
 async function handleDescriptionPhase(
     env: Env, roomId: string, botToken: string, botId: string,
-    state: any, botConfig: any, providerConfig: LLMProviderRow | null
+    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string
 ) {
-    console.log(`[Bot ${botId}] Starting description phase handler`);
+    console.log(`[Bot ${botId}] Starting description phase`);
     let description = "";
 
     try {
@@ -86,92 +87,58 @@ async function handleDescriptionPhase(
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
 
-        console.log(`[Bot ${botId}] Calling LLM with provider: ${botConfig.provider}`);
+        console.log(`[Bot ${botId}] Calling LLM (${botConfig.provider})...`);
         const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
-        console.log(`[Bot ${botId}] LLM raw response: ${response.substring(0, 200)}...`);
+        console.log(`[Bot ${botId}] Raw response: ${response.substring(0, 100)}...`);
 
-        const json = extractJSON(response);
-        console.log(`[Bot ${botId}] Extracted JSON:`, JSON.stringify(json));
+        // Clean the response (Plain Text Strategy)
+        description = cleanResponse(response);
+        console.log(`[Bot ${botId}] Cleaned description: "${description}"`);
 
-        // Validate description
-        description = json.description?.trim();
+        // Basic safety checks
+        if (!description) description = "让我想想...";
 
-        if (!description) throw new Error("Bot generated empty description");
-
-        // Basic safety check
         if (state.myWord && description.includes(state.myWord)) {
-            console.warn(`[Bot ${botId}] Bot tried to say the word! Fallback.`);
-            description = "It's hard to describe...";
+            console.warn(`[Bot ${botId}] Bot tried to say proper noun! Fallback.`);
+            description = "这个东西很有趣...";
         }
-
-        console.log(`[Bot ${botId}] Final description: "${description}"`);
     } catch (error: any) {
-        console.error(`[Bot ${botId}] Description generation failed:`, error);
+        console.error(`[Bot ${botId}] Generation failed:`, error);
         // Fallback description with error info to alert users
         const errorMsg = error.message || "Unknown error";
         if (errorMsg.includes("Missing API key")) {
             description = "[AI Error] 未配置 API Key，请联系房主。";
         } else {
-            // Show more error details for debugging (50 chars instead of 20)
-            description = `[AI Error] 思考卡壳了 (${errorMsg.substring(0, 50)})`;
+            description = `(思考短路) ${error.message?.substring(0, 20) || 'Unknown'}`;
         }
     }
 
+    // Submit via HTTP API (Isolates execution context)
     try {
-        console.log(`[Bot ${botId}] Submitting description to API...`);
-        const result = await submitDescription(roomId, botToken, description, env);
+        console.log(`[Bot ${botId}] Submitting via HTTP to ${origin}...`);
+        const apiUrl = `${origin}/api/room/${roomId}/action`;
+
+        const resp = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                token: botToken,
+                action: { type: 'submit-description', text: description }
+            })
+        });
+
+        const result: any = await resp.json();
         console.log(`[Bot ${botId}] Submit result:`, JSON.stringify(result));
-
-        if (result.success) {
-            // After successful submission, check if next player is also a bot
-            // and trigger them directly (since we don't have ctx in this async context)
-            await triggerNextBotIfNeeded(env, roomId, botId);
-        }
     } catch (submitError) {
-        console.error(`[Bot ${botId}] Failed to submit description:`, submitError);
+        console.error(`[Bot ${botId}] HTTP submit failed:`, submitError);
     }
 }
 
-/**
- * After a bot submits, check if the next player is also a bot and trigger them.
- * This fixes the bot chain issue when running in async context without ExecutionContext.
- */
-async function triggerNextBotIfNeeded(env: Env, roomId: string, currentBotId: string) {
-    try {
-        // Get fresh room state to find next player
-        const room = await env.DB.prepare('SELECT * FROM rooms WHERE id = ?').bind(roomId).first<any>();
-        if (!room || room.phase !== 'description') {
-            console.log(`[Bot Chain] Room ${roomId} not in description phase, skipping trigger`);
-            return;
-        }
 
-        const playersResult = await env.DB.prepare(
-            'SELECT * FROM players WHERE room_id = ? AND is_alive = 1 ORDER BY join_order ASC'
-        ).bind(roomId).all<PlayerRow>();
-        const alivePlayers = playersResult.results || [];
-
-        if (alivePlayers.length === 0) return;
-
-        const nextTurn = room.current_turn % alivePlayers.length;
-        const nextPlayer = alivePlayers[nextTurn];
-
-        if (nextPlayer && nextPlayer.is_bot === 1 && nextPlayer.id !== currentBotId) {
-            console.log(`[Bot Chain] Next player ${nextPlayer.id} is a bot, triggering...`);
-            // Run next bot (don't await to avoid long chains blocking)
-            runBotTurn(env, roomId, nextPlayer.id).catch(err => {
-                console.error(`[Bot Chain] Failed to trigger next bot:`, err);
-            });
-        } else {
-            console.log(`[Bot Chain] Next player ${nextPlayer?.id} is human or same bot, waiting for input`);
-        }
-    } catch (error) {
-        console.error(`[Bot Chain] Error checking next player:`, error);
-    }
-}
 
 async function handleVotingPhase(
     env: Env, roomId: string, botToken: string, botId: string,
-    state: any, botConfig: any, providerConfig: LLMProviderRow | null
+    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string
 ) {
     // Check if already voted
     const hasVoted = state.players.find((p: any) => p.id === botId)?.hasVoted;
@@ -334,6 +301,30 @@ async function callLLM(
     throw new Error(`Unsupported api_type: ${api_type}`);
 }
 
+function cleanResponse(text: string): string {
+    // 1. Remove <think> blocks (DeepSeek style)
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+
+    // 2. Remove "thought:" lines if mixed
+    cleaned = cleaned.replace(/^thought:.*$/gim, '');
+
+    // 3. Remove "Description:" prefix
+    cleaned = cleaned.replace(/^Description:\s*/i, '');
+    cleaned = cleaned.replace(/^描述[:：]\s*/i, '');
+
+    // 4. Remove surrounding quotes
+    cleaned = cleaned.replace(/^["']|["']$/g, '');
+
+    // 5. Remove JSON artifacts if model failed to follow instructions
+    if (cleaned.trim().startsWith('{') || cleaned.trim().startsWith('```')) {
+        // Fallback to extraction if it looks like JSON
+        const json = extractJSON(text); // Reuse existing robust extractor
+        return json.description || cleaned;
+    }
+
+    return cleaned.trim().substring(0, 66); // Hard limit 66 chars
+}
+
 function extractJSON(text: string): any {
     // Try multiple extraction strategies
     try {
@@ -361,18 +352,7 @@ function extractJSON(text: string): any {
             }
         }
 
-        // Fallback: Return the raw text as description (better than "...")
-        console.error("[extractJSON] All parse strategies failed. Raw text:", text.substring(0, 300));
-        // Use raw text (cleaned up) as the description
-        const cleanedText = text
-            .replace(/```[\s\S]*?```/g, '') // Remove code blocks
-            .replace(/[{}"]/g, '') // Remove JSON chars
-            .trim()
-            .substring(0, 50); // Limit length
-
-        return {
-            description: cleanedText || "让我想想...",  // Use cleaned text or fallback
-            vote_target_id: ""
-        };
+        // Fallback: Return raw text (or partial) for voting if JSON fails
+        return { description: "...", vote_target_id: "" };
     }
 }

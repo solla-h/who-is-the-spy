@@ -128,7 +128,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
             return jsonResponse(result, status, corsHeaders);
           }
           case 'confirm-word': {
-            const result = await confirmWord(roomId, token, env, ctx);
+            const result = await confirmWord(roomId, token, env, ctx, url.origin);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
@@ -142,17 +142,17 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
             if (!text) {
               return jsonResponse({ success: false, error: '缺少描述文本', code: 'INVALID_INPUT' }, 400, corsHeaders);
             }
-            const result = await submitDescription(roomId, token, text, env, ctx);
+            const result = await submitDescription(roomId, token, text, env, ctx, url.origin);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
           case 'next-player': {
-            const result = await skipPlayer(roomId, token, env, ctx);
+            const result = await skipPlayer(roomId, token, env, ctx, url.origin);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
           case 'start-voting': {
-            const result = await startVoting(roomId, token, env, ctx);
+            const result = await startVoting(roomId, token, env, ctx, url.origin);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }
@@ -171,7 +171,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
             return jsonResponse(result, status, corsHeaders);
           }
           case 'continue-game': {
-            const result = await continueGame(roomId, token, env, ctx);
+            const result = await continueGame(roomId, token, env, ctx, url.origin);
             const status = result.success ? 200 : getErrorStatus(result.code);
             return jsonResponse(result, status, corsHeaders);
           }

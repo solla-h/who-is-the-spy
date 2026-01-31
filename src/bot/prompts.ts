@@ -13,7 +13,7 @@ You are playing "Who is the Spy" (谁是卧底).
 - If you think you are Civilian, identify the Spy (whose descriptions don't fit).
 
 ## OUTPUT FORMAT
-Always output strict JSON. No markdown formatting, no "Here is the JSON", just the raw JSON object.
+Output ONLY the content requested. Do not use JSON. Do not include markdown code blocks.
 `;
 
 export const DESC_PROMPT = `
@@ -31,15 +31,16 @@ export const DESC_PROMPT = `
    - If YES: You are likely Civilian. Describe your word honestly but vaguely (so Spies can't easily guess it).
    - If NO: You are likely Spy. Try to describe something that fits BOTH their descriptions and your word, or just bluff based on their descriptions.
 2. **CONSTRAINT**:
-   - Description length: 2-30 chars.
+   - Description length: 2-66 chars.
    - **FORBIDDEN**: Do NOT include the word "{{MY_WORD}}" itself or any of its characters!
    - Do NOT repeat previous descriptions.
 
-## OUTPUT JSON
-{
-  "thought": "Analysis of the situation and my strategy...",
-  "description": "The short text to say to other players"
-}
+## OUTPUT REQUIREMENT
+- Output **ONLY** the description text.
+- Do NOT output "Description:".
+- Do NOT output your thought process.
+- Do NOT output JSON.
+- Just the sentence you want to say.
 `;
 
 export const VOTE_PROMPT = `

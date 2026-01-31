@@ -197,12 +197,12 @@ export function validateDescription(text: string, playerWord: string): { valid: 
     return { valid: false, error: '描述必须是文本' };
   }
 
-  // Check length (2-50 characters)
+  // Check length (2-66 characters)
   if (text.length < 2) {
     return { valid: false, error: '描述至少需要2个字符' };
   }
-  if (text.length > 50) {
-    return { valid: false, error: '描述不能超过50个字符' };
+  if (text.length > 66) {
+    return { valid: false, error: '描述不能超过66个字符' };
   }
 
   // Requirement 6.8: Check if description contains the player's word
@@ -259,7 +259,8 @@ export async function submitDescription(
   playerToken: string,
   text: string,
   env: Env,
-  ctx?: ExecutionContext
+  ctx?: ExecutionContext,
+  origin?: string
 ): Promise<ActionResult> {
   try {
     // Get room
@@ -362,11 +363,11 @@ export async function submitDescription(
     `).bind(nextTurn, timestamp, roomId).run();
 
     // Trigger bot if next player is bot
-    if (ctx) {
+    if (ctx && origin) {
       const alivePlayers = players.filter(p => p.is_alive === 1);
       const nextPlayer = alivePlayers[nextTurn];
       if (nextPlayer && nextPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id));
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin));
       }
     }
 
@@ -389,7 +390,8 @@ export async function skipPlayer(
   roomId: string,
   playerToken: string,
   env: Env,
-  ctx?: ExecutionContext
+  ctx?: ExecutionContext,
+  origin?: string
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify description phase
@@ -425,11 +427,11 @@ export async function skipPlayer(
     `).bind(nextTurn, timestamp, roomId).run();
 
     // Trigger bot if next player is bot
-    if (ctx) {
+    if (ctx && origin) {
       const alivePlayers = players.filter(p => p.is_alive === 1);
       const nextPlayer = alivePlayers[nextTurn];
       if (nextPlayer && nextPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id));
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin));
       }
     }
 
@@ -452,7 +454,8 @@ export async function startVoting(
   roomId: string,
   playerToken: string,
   env: Env,
-  ctx?: ExecutionContext
+  ctx?: ExecutionContext,
+  origin?: string
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify description phase
@@ -478,14 +481,14 @@ export async function startVoting(
     `).bind(timestamp, roomId).run();
 
     // Trigger all alive bots to vote
-    if (ctx) {
+    if (ctx && origin) {
       const playersResult = await env.DB.prepare(`
         SELECT * FROM players WHERE room_id = ? AND is_alive = 1 AND is_bot = 1
       `).bind(roomId).all<PlayerRow>();
       const bots = playersResult.results || [];
 
       for (const bot of bots) {
-        ctx.waitUntil(runBotTurn(env, roomId, bot.id));
+        ctx.waitUntil(runBotTurn(env, roomId, bot.id, origin));
       }
     }
 
@@ -509,7 +512,8 @@ export async function confirmWord(
   roomId: string,
   playerToken: string,
   env: Env,
-  ctx?: ExecutionContext
+  ctx?: ExecutionContext,
+  origin?: string
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify word-reveal phase
@@ -540,7 +544,7 @@ export async function confirmWord(
     ]);
 
     // Trigger first player if bot
-    if (ctx) {
+    if (ctx && origin) {
       // Need to find first player (idx 0 of current_turn). confirmWord transitions to description.
       // We need to fetch current turn from room
       const currentRoom = await env.DB.prepare('SELECT current_turn FROM rooms WHERE id = ?').bind(roomId).first<RoomRow>();
@@ -554,7 +558,7 @@ export async function confirmWord(
 
       const firstPlayer = alivePlayers[turn];
       if (firstPlayer && firstPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id));
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin));
       }
     }
 
@@ -994,7 +998,8 @@ export async function continueGame(
   roomId: string,
   playerToken: string,
   env: Env,
-  ctx?: ExecutionContext
+  ctx?: ExecutionContext,
+  origin?: string
 ): Promise<ActionResult> {
   try {
     // Authenticate host and verify result phase
@@ -1029,7 +1034,7 @@ export async function continueGame(
     `).bind(newRound, timestamp, roomId).run();
 
     // Trigger first player (index 0) if bot
-    if (ctx) {
+    if (ctx && origin) {
       // current_turn is set to 0 above
       const playersResult = await env.DB.prepare(`
         SELECT * FROM players WHERE room_id = ? ORDER BY join_order ASC
@@ -1039,7 +1044,7 @@ export async function continueGame(
 
       const firstPlayer = alivePlayers[0];
       if (firstPlayer && firstPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id));
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin));
       }
     }
 
