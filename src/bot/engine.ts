@@ -105,7 +105,8 @@ async function handleDescriptionPhase(
         if (errorMsg.includes("Missing API key")) {
             description = "[AI Error] 未配置 API Key，请联系房主。";
         } else {
-            description = `[AI Error] 思考卡壳了 (${errorMsg.substring(0, 20)}...)`;
+            // Show more error details for debugging (50 chars instead of 20)
+            description = `[AI Error] 思考卡壳了 (${errorMsg.substring(0, 50)})`;
         }
     }
 
@@ -205,7 +206,10 @@ async function callLLM(
     const { api_type, base_url, default_model } = providerConfig;
 
     // 1. OpenAI Compatible (Default, works with DeepSeek, Qwen, Moonshot, etc.)
+    // Note: Some proxies have issues with 'system' role, so we embed system prompt into user message
     if (api_type === 'openai_compatible') {
+        const combinedUserMessage = `[System Instructions]\n${system}\n\n[Your Task]\n${user}`;
+
         const resp = await fetch(`${base_url}/v1/chat/completions`, {
             method: 'POST',
             headers: {
@@ -215,14 +219,17 @@ async function callLLM(
             body: JSON.stringify({
                 model: default_model,
                 messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: user }
+                    { role: 'user', content: combinedUserMessage }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                max_tokens: 256  // Required by some proxies to avoid timeout
             })
         });
 
-        if (!resp.ok) throw new Error(`${providerConfig.id} API Error: ${resp.status} ${await resp.text()}`);
+        if (!resp.ok) {
+            const errorBody = await resp.text();
+            throw new Error(`${providerConfig.id} API Error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+        }
         const data = await resp.json() as any;
         return data.choices?.[0]?.message?.content || "{}";
     }
