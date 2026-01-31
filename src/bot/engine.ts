@@ -63,6 +63,7 @@ async function handleDescriptionPhase(
     env: Env, roomId: string, botToken: string, botId: string,
     state: any, botConfig: any, providerConfig: LLMProviderRow | null
 ) {
+    console.log(`[Bot ${botId}] Starting description phase handler`);
     let description = "";
 
     try {
@@ -85,8 +86,12 @@ async function handleDescriptionPhase(
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
 
+        console.log(`[Bot ${botId}] Calling LLM with provider: ${botConfig.provider}`);
         const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
+        console.log(`[Bot ${botId}] LLM raw response: ${response.substring(0, 200)}...`);
+
         const json = extractJSON(response);
+        console.log(`[Bot ${botId}] Extracted JSON:`, JSON.stringify(json));
 
         // Validate description
         description = json.description?.trim();
@@ -95,11 +100,13 @@ async function handleDescriptionPhase(
 
         // Basic safety check
         if (state.myWord && description.includes(state.myWord)) {
-            console.warn("Bot tried to say the word! Fallback.");
+            console.warn(`[Bot ${botId}] Bot tried to say the word! Fallback.`);
             description = "It's hard to describe...";
         }
+
+        console.log(`[Bot ${botId}] Final description: "${description}"`);
     } catch (error: any) {
-        console.error(`[Bot] Description generation failed for ${botId}:`, error);
+        console.error(`[Bot ${botId}] Description generation failed:`, error);
         // Fallback description with error info to alert users
         const errorMsg = error.message || "Unknown error";
         if (errorMsg.includes("Missing API key")) {
@@ -111,9 +118,54 @@ async function handleDescriptionPhase(
     }
 
     try {
-        await submitDescription(roomId, botToken, description, env);
+        console.log(`[Bot ${botId}] Submitting description to API...`);
+        const result = await submitDescription(roomId, botToken, description, env);
+        console.log(`[Bot ${botId}] Submit result:`, JSON.stringify(result));
+
+        if (result.success) {
+            // After successful submission, check if next player is also a bot
+            // and trigger them directly (since we don't have ctx in this async context)
+            await triggerNextBotIfNeeded(env, roomId, botId);
+        }
     } catch (submitError) {
-        console.error(`[Bot] Failed to submit description for ${botId}:`, submitError);
+        console.error(`[Bot ${botId}] Failed to submit description:`, submitError);
+    }
+}
+
+/**
+ * After a bot submits, check if the next player is also a bot and trigger them.
+ * This fixes the bot chain issue when running in async context without ExecutionContext.
+ */
+async function triggerNextBotIfNeeded(env: Env, roomId: string, currentBotId: string) {
+    try {
+        // Get fresh room state to find next player
+        const room = await env.DB.prepare('SELECT * FROM rooms WHERE id = ?').bind(roomId).first<any>();
+        if (!room || room.phase !== 'description') {
+            console.log(`[Bot Chain] Room ${roomId} not in description phase, skipping trigger`);
+            return;
+        }
+
+        const playersResult = await env.DB.prepare(
+            'SELECT * FROM players WHERE room_id = ? AND is_alive = 1 ORDER BY join_order ASC'
+        ).bind(roomId).all<PlayerRow>();
+        const alivePlayers = playersResult.results || [];
+
+        if (alivePlayers.length === 0) return;
+
+        const nextTurn = room.current_turn % alivePlayers.length;
+        const nextPlayer = alivePlayers[nextTurn];
+
+        if (nextPlayer && nextPlayer.is_bot === 1 && nextPlayer.id !== currentBotId) {
+            console.log(`[Bot Chain] Next player ${nextPlayer.id} is a bot, triggering...`);
+            // Run next bot (don't await to avoid long chains blocking)
+            runBotTurn(env, roomId, nextPlayer.id).catch(err => {
+                console.error(`[Bot Chain] Failed to trigger next bot:`, err);
+            });
+        } else {
+            console.log(`[Bot Chain] Next player ${nextPlayer?.id} is human or same bot, waiting for input`);
+        }
+    } catch (error) {
+        console.error(`[Bot Chain] Error checking next player:`, error);
     }
 }
 
@@ -283,15 +335,44 @@ async function callLLM(
 }
 
 function extractJSON(text: string): any {
+    // Try multiple extraction strategies
     try {
+        // Strategy 1: Direct JSON parse (if response is pure JSON)
+        return JSON.parse(text);
+    } catch (e1) {
+        // Strategy 2: Extract JSON from markdown code block
+        const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+        if (codeBlockMatch) {
+            try {
+                return JSON.parse(codeBlockMatch[1]);
+            } catch (e2) {
+                console.warn("[extractJSON] Code block JSON parse failed");
+            }
+        }
+
+        // Strategy 3: Find first { and last } and parse
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
-        if (start !== -1 && end !== -1) {
-            return JSON.parse(text.slice(start, end + 1));
+        if (start !== -1 && end !== -1 && end > start) {
+            try {
+                return JSON.parse(text.slice(start, end + 1));
+            } catch (e3) {
+                console.warn("[extractJSON] Bracket extraction failed");
+            }
         }
-        return JSON.parse(text);
-    } catch (e) {
-        console.error("Failed to parse JSON from LLM:", text);
-        return { description: "...", vote_target_id: "" };
+
+        // Fallback: Return the raw text as description (better than "...")
+        console.error("[extractJSON] All parse strategies failed. Raw text:", text.substring(0, 300));
+        // Use raw text (cleaned up) as the description
+        const cleanedText = text
+            .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+            .replace(/[{}"]/g, '') // Remove JSON chars
+            .trim()
+            .substring(0, 50); // Limit length
+
+        return {
+            description: cleanedText || "让我想想...",  // Use cleaned text or fallback
+            vote_target_id: ""
+        };
     }
 }
