@@ -21,7 +21,7 @@ crons = ["0 * * * *"]
 # API Keys must be set as Cloudflare Secrets (NOT in this file!)
 #
 # Run the following commands to set secrets:
-#   wrangler secret put ADMIN_TOKEN      # Admin panel access token
+#   wrangler secret put ADMIN_TOKEN      # Admin panel & Debug Console access token
 #   wrangler secret put OPENAI_API_KEY
 #   wrangler secret put DEEPSEEK_API_KEY
 #   wrangler secret put GEMINI_API_KEY

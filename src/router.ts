@@ -73,10 +73,10 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
       }
     }
 
-    // ========== Debug Routes (需要管理员密码) ==========
+    // ========== Debug Routes (使用 ADMIN_TOKEN 验证) ==========
     if (path === '/api/debug/logs' && method === 'GET') {
       const adminKey = url.searchParams.get('key');
-      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+      if (!adminKey || adminKey !== env.ADMIN_TOKEN) {
         return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
       }
 
@@ -94,7 +94,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
 
     if (path === '/api/debug/stats' && method === 'GET') {
       const adminKey = url.searchParams.get('key');
-      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+      if (!adminKey || adminKey !== env.ADMIN_TOKEN) {
         return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
       }
 
@@ -105,7 +105,7 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
 
     if (path === '/api/debug/cleanup' && method === 'POST') {
       const adminKey = url.searchParams.get('key');
-      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+      if (!adminKey || adminKey !== env.ADMIN_TOKEN) {
         return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
       }
 
