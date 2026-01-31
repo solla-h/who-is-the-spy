@@ -6,7 +6,14 @@ import { SYSTEM_PROMPT, DESC_PROMPT, VOTE_PROMPT } from './prompts';
 import { getPersonaById } from './personas';
 import { PlayerRow, LLMProviderRow } from '../types';
 
-export async function runBotTurn(env: Env, roomId: string, botId: string, origin: string) {
+export async function runBotTurn(
+    env: Env,
+    roomId: string,
+    botId: string,
+    origin: string,
+    ctx?: ExecutionContext  // 新增参数：用于链式触发下一个 Bot
+) {
+    console.log(`[Bot ${botId}] === START runBotTurn ===`);
     try {
         // 1. Get Context
         // Fetch bot token and config
@@ -47,24 +54,45 @@ export async function runBotTurn(env: Env, roomId: string, botId: string, origin
             throw new Error(`Failed to get state: ${stateResult.error}`);
         }
         const state = stateResult.state;
-
-        // Check if it's actually my turn (double check to avoid race conditions is handled by API)
+        console.log(`[Bot ${botId}] Phase: ${state.phase}, Round: ${state.round}, CurrentTurn: ${state.currentTurn}`);
 
         if (state.phase === 'description') {
-            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin);
+            await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin, ctx);
         } else if (state.phase === 'voting') {
             await handleVotingPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin);
         }
     } catch (error) {
         console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
     }
+    console.log(`[Bot ${botId}] === END runBotTurn ===`);
 }
 
 async function handleDescriptionPhase(
     env: Env, roomId: string, botToken: string, botId: string,
-    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string
+    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string,
+    ctx?: ExecutionContext  // 新增参数：用于链式触发
 ) {
-    console.log(`[Bot ${botId}] Starting description phase`);
+    console.log(`[Bot ${botId}] Starting description phase handler`);
+
+    // === 预检查 #1：是否轮到自己 ===
+    const alivePlayers = state.players.filter((p: any) => p.isAlive);
+    const currentTurnIndex = state.currentTurn % alivePlayers.length;
+    const currentPlayer = alivePlayers[currentTurnIndex];
+
+    if (!currentPlayer || currentPlayer.id !== botId) {
+        console.log(`[Bot ${botId}] Not my turn, skipping. Expected: ${currentPlayer?.id}, Me: ${botId}`);
+        return;
+    }
+
+    // === 预检查 #2：是否已经描述过 ===
+    const meInState = state.players.find((p: any) => p.id === botId);
+    if (meInState?.hasDescribed) {
+        console.log(`[Bot ${botId}] Already described this round, skipping.`);
+        return;
+    }
+
+    console.log(`[Bot ${botId}] Passed pre-checks, proceeding to generate description.`);
+
     let description = "";
 
     try {
@@ -73,7 +101,7 @@ async function handleDescriptionPhase(
             ? state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n')
             : "(No one has spoken yet in this round)";
 
-        const aliveCount = state.players.filter((p: any) => p.isAlive).length;
+        const aliveCount = alivePlayers.length;
 
         const userPrompt = DESC_PROMPT
             .replace('{{ROUND}}', String(state.round))
@@ -89,7 +117,8 @@ async function handleDescriptionPhase(
 
         console.log(`[Bot ${botId}] Calling LLM (${botConfig.provider})...`);
         const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
-        console.log(`[Bot ${botId}] Raw response: ${response.substring(0, 100)}...`);
+        console.log(`[Bot ${botId}] LLM response received, length: ${response.length}`);
+        console.log(`[Bot ${botId}] Raw response (first 100 chars): ${response.substring(0, 100)}...`);
 
         // Clean the response (Plain Text Strategy)
         description = cleanResponse(response);
@@ -113,33 +142,17 @@ async function handleDescriptionPhase(
         }
     }
 
-    // Submit via HTTP API (Isolates execution context)
+    // === 核心修复：直接调用 submitDescription，传入 ctx 以支持链式触发 ===
+    console.log(`[Bot ${botId}] Submitting description: "${description}"`);
     try {
-        console.log(`[Bot ${botId}] Submitting via HTTP to ${origin}...`);
-        const apiUrl = `${origin}/api/room/${roomId}/action`;
+        const result = await submitDescription(roomId, botToken, description, env, ctx, origin);
+        console.log(`[Bot ${botId}] Submit result: ${JSON.stringify(result)}`);
 
-        const resp = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                token: botToken,
-                action: { type: 'submit-description', text: description }
-            })
-        });
-
-        const result: any = await resp.json();
-        console.log(`[Bot ${botId}] Submit result:`, JSON.stringify(result));
-    } catch (submitError) {
-        console.error(`[Bot ${botId}] HTTP submit failed:`, submitError);
-        console.log(`[Bot ${botId}] Fallback to direct DB submission test...`);
-        try {
-            // Fallback: Execute directly in this worker to at least save the description
-            // Note: We don't pass ctx, so it WON'T trigger the next bot automatically.
-            // This prevents chain timeouts but means the game might pause (needs manual skip).
-            await submitDescription(roomId, botToken, description, env, undefined, origin);
-        } catch (fallbackError) {
-            console.error(`[Bot ${botId}] Direct submission also failed:`, fallbackError);
+        if (!result.success) {
+            console.error(`[Bot ${botId}] Submit failed:`, result.error);
         }
+    } catch (submitError) {
+        console.error(`[Bot ${botId}] Direct submission failed:`, submitError);
     }
 }
 
@@ -205,6 +218,9 @@ async function handleVotingPhase(
 
 // --- LLM Caller with Dynamic Provider Config ---
 
+// LLM 调用超时时间（毫秒）- 留 5 秒余量给 Workers 的 30 秒限制
+const LLM_TIMEOUT_MS = 25000;
+
 async function callLLM(
     env: Env,
     system: string,
@@ -236,77 +252,97 @@ async function callLLM(
 
     const { api_type, base_url, default_model } = providerConfig;
 
-    // 1. OpenAI Compatible (Default, works with DeepSeek, Qwen, Moonshot, etc.)
-    // Note: Some proxies have issues with 'system' role, so we embed system prompt into user message
-    if (api_type === 'openai_compatible') {
-        const combinedUserMessage = `[System Instructions]\n${system}\n\n[Your Task]\n${user}`;
+    // 创建超时控制器
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        console.warn(`[LLM] Request timeout after ${LLM_TIMEOUT_MS}ms, aborting...`);
+        controller.abort();
+    }, LLM_TIMEOUT_MS);
 
-        const resp = await fetch(`${base_url}/v1/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: default_model,
-                messages: [
-                    { role: 'user', content: combinedUserMessage }
-                ],
-                temperature: 0.9,
-                max_tokens: 32000 //Increased for DeepSeek R1 thinking process
-            })
-        });
+    try {
+        // 1. OpenAI Compatible (Default, works with DeepSeek, Qwen, Moonshot, etc.)
+        // Note: Some proxies have issues with 'system' role, so we embed system prompt into user message
+        if (api_type === 'openai_compatible') {
+            const combinedUserMessage = `[System Instructions]\n${system}\n\n[Your Task]\n${user}`;
 
-        if (!resp.ok) {
-            const errorBody = await resp.text();
-            throw new Error(`${providerConfig.id} API Error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+            const resp = await fetch(`${base_url}/v1/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: default_model,
+                    messages: [
+                        { role: 'user', content: combinedUserMessage }
+                    ],
+                    temperature: 0.9,
+                    max_tokens: 32000 //Increased for DeepSeek R1 thinking process
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) {
+                const errorBody = await resp.text();
+                throw new Error(`${providerConfig.id} API Error: ${resp.status} - ${errorBody.substring(0, 100)}`);
+            }
+            const data = await resp.json() as any;
+            return data.choices?.[0]?.message?.content || "{}";
         }
-        const data = await resp.json() as any;
-        return data.choices?.[0]?.message?.content || "{}";
+
+        // 2. Google Gemini (native REST API)
+        if (api_type === 'gemini_native') {
+            const url = `${base_url}/models/${default_model}:generateContent?key=${apiKey}`;
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: system + "\n\n" + user }]
+                    }]
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) throw new Error(`Gemini API Error: ${resp.status} ${await resp.text()}`);
+            const data = await resp.json() as any;
+            return data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        }
+
+        // 3. Anthropic Claude
+        if (api_type === 'claude_native') {
+            const resp = await fetch(`${base_url}/v1/messages`, {
+                method: 'POST',
+                headers: {
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: default_model,
+                    max_tokens: 1024,
+                    system: system,
+                    messages: [{ role: 'user', content: user }]
+                }),
+                signal: controller.signal  // 添加超时信号
+            });
+
+            if (!resp.ok) throw new Error(`Claude API Error: ${resp.status} ${await resp.text()}`);
+            const data = await resp.json() as any;
+            return data.content?.[0]?.text || "{}";
+        }
+
+        throw new Error(`Unsupported api_type: ${api_type}`);
+    } catch (error: any) {
+        // 处理超时错误
+        if (error.name === 'AbortError') {
+            throw new Error(`LLM request timeout after ${LLM_TIMEOUT_MS / 1000}s`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeoutId);  // 清理超时定时器
     }
-
-    // 2. Google Gemini (native REST API)
-    if (api_type === 'gemini_native') {
-        const url = `${base_url}/models/${default_model}:generateContent?key=${apiKey}`;
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    role: "user",
-                    parts: [{ text: system + "\n\n" + user }]
-                }]
-            })
-        });
-
-        if (!resp.ok) throw new Error(`Gemini API Error: ${resp.status} ${await resp.text()}`);
-        const data = await resp.json() as any;
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-    }
-
-    // 3. Anthropic Claude
-    if (api_type === 'claude_native') {
-        const resp = await fetch(`${base_url}/v1/messages`, {
-            method: 'POST',
-            headers: {
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: default_model,
-                max_tokens: 1024,
-                system: system,
-                messages: [{ role: 'user', content: user }]
-            })
-        });
-
-        if (!resp.ok) throw new Error(`Claude API Error: ${resp.status} ${await resp.text()}`);
-        const data = await resp.json() as any;
-        return data.content?.[0]?.text || "{}";
-    }
-
-    throw new Error(`Unsupported api_type: ${api_type}`);
 }
 
 function cleanResponse(text: string): string {
