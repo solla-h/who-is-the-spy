@@ -5,6 +5,7 @@ import { submitDescription, submitVote } from '../api/game';
 import { SYSTEM_PROMPT, DESC_PROMPT, VOTE_PROMPT } from './prompts';
 import { getPersonaById } from './personas';
 import { PlayerRow, LLMProviderRow } from '../types';
+import { logAIInteraction, AILogEntry } from './logger';
 
 export async function runBotTurn(
     env: Env,
@@ -59,7 +60,7 @@ export async function runBotTurn(
         if (state.phase === 'description') {
             await handleDescriptionPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin, ctx);
         } else if (state.phase === 'voting') {
-            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin);
+            await handleVotingPhase(env, roomId, botToken, botId, state, botConfig, providerConfig, origin, ctx);
         }
     } catch (error) {
         console.error(`[Bot Error] Room ${roomId} Bot ${botId}:`, error);
@@ -94,6 +95,19 @@ async function handleDescriptionPhase(
     console.log(`[Bot ${botId}] Passed pre-checks, proceeding to generate description.`);
 
     let description = "";
+    const startTime = Date.now();
+
+    // 准备日志条目
+    const logEntry: AILogEntry = {
+        roomId,
+        botId,
+        botName: meInState?.name,
+        actionType: 'description',
+        provider: botConfig.provider,
+        model: providerConfig?.default_model,
+        round: state.round,
+        status: 'success'
+    };
 
     try {
         // Filter history
@@ -115,13 +129,23 @@ async function handleDescriptionPhase(
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
 
+        // 记录 Prompt 到日志
+        logEntry.systemPrompt = systemPrompt;
+        logEntry.userPrompt = userPrompt;
+
         console.log(`[Bot ${botId}] Calling LLM (${botConfig.provider})...`);
         const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
-        console.log(`[Bot ${botId}] LLM response received, length: ${response.length}`);
+
+        // 记录响应和耗时
+        logEntry.rawResponse = response;
+        logEntry.durationMs = Date.now() - startTime;
+
+        console.log(`[Bot ${botId}] LLM response received, length: ${response.length}, duration: ${logEntry.durationMs}ms`);
         console.log(`[Bot ${botId}] Raw response (first 100 chars): ${response.substring(0, 100)}...`);
 
         // Clean the response (Plain Text Strategy)
         description = cleanResponse(response);
+        logEntry.cleanedResponse = description;
         console.log(`[Bot ${botId}] Cleaned description: "${description}"`);
 
         // Basic safety checks
@@ -130,9 +154,16 @@ async function handleDescriptionPhase(
         if (state.myWord && description.includes(state.myWord)) {
             console.warn(`[Bot ${botId}] Bot tried to say proper noun! Fallback.`);
             description = "这个东西很有趣...";
+            logEntry.cleanedResponse = description;
         }
     } catch (error: any) {
         console.error(`[Bot ${botId}] Generation failed:`, error);
+
+        // 记录错误状态
+        logEntry.status = error.message?.includes('timeout') ? 'timeout' : 'error';
+        logEntry.errorMessage = error.message;
+        logEntry.durationMs = Date.now() - startTime;
+
         // Fallback description with error info to alert users
         const errorMsg = error.message || "Unknown error";
         if (errorMsg.includes("Missing API key")) {
@@ -140,7 +171,11 @@ async function handleDescriptionPhase(
         } else {
             description = `(思考短路) ${error.message?.substring(0, 20) || 'Unknown'}`;
         }
+        logEntry.cleanedResponse = description;
     }
+
+    // === 异步记录日志（不阻塞主流程）===
+    logAIInteraction(env, logEntry, ctx);
 
     // === 核心修复：直接调用 submitDescription，传入 ctx 以支持链式触发 ===
     console.log(`[Bot ${botId}] Submitting description: "${description}"`);
@@ -160,13 +195,28 @@ async function handleDescriptionPhase(
 
 async function handleVotingPhase(
     env: Env, roomId: string, botToken: string, botId: string,
-    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string
+    state: any, botConfig: any, providerConfig: LLMProviderRow | null, origin: string,
+    ctx?: ExecutionContext  // 新增参数：用于日志记录
 ) {
     // Check if already voted
     const hasVoted = state.players.find((p: any) => p.id === botId)?.hasVoted;
     if (hasVoted) return;
 
+    const meInState = state.players.find((p: any) => p.id === botId);
     let targetId = "";
+    const startTime = Date.now();
+
+    // 准备日志条目
+    const logEntry: AILogEntry = {
+        roomId,
+        botId,
+        botName: meInState?.name,
+        actionType: 'vote',
+        provider: botConfig.provider,
+        model: providerConfig?.default_model,
+        round: state.round,
+        status: 'success'
+    };
 
     try {
         const historyText = state.descriptions.map((d: any) => `${d.playerName}: ${d.text}`).join('\n');
@@ -182,14 +232,31 @@ async function handleVotingPhase(
             ? `${systemPromptBase}\n\n## YOUR PERSONA\n${botConfig.persona}`
             : systemPromptBase;
 
+        // 记录 Prompt 到日志
+        logEntry.systemPrompt = systemPrompt;
+        logEntry.userPrompt = userPrompt;
+
         const response = await callLLM(env, systemPrompt, userPrompt, providerConfig);
         const json = extractJSON(response);
 
+        // 记录响应和耗时
+        logEntry.rawResponse = response;
+        logEntry.durationMs = Date.now() - startTime;
+        logEntry.cleanedResponse = JSON.stringify(json);
+
         targetId = json.vote_target_id;
-    } catch (error) {
+    } catch (error: any) {
         console.error(`[Bot] Vote generation failed for ${botId}:`, error);
+
+        // 记录错误状态
+        logEntry.status = error.message?.includes('timeout') ? 'timeout' : 'error';
+        logEntry.errorMessage = error.message;
+        logEntry.durationMs = Date.now() - startTime;
         // Will fall through to random vote below
     }
+
+    // === 异步记录日志（不阻塞主流程）===
+    logAIInteraction(env, logEntry, ctx);
 
     // Validate target or perform random fallback
     const target = state.players.find((p: any) => p.id === targetId);
