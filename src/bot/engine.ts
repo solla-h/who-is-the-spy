@@ -131,6 +131,15 @@ async function handleDescriptionPhase(
         console.log(`[Bot ${botId}] Submit result:`, JSON.stringify(result));
     } catch (submitError) {
         console.error(`[Bot ${botId}] HTTP submit failed:`, submitError);
+        console.log(`[Bot ${botId}] Fallback to direct DB submission test...`);
+        try {
+            // Fallback: Execute directly in this worker to at least save the description
+            // Note: We don't pass ctx, so it WON'T trigger the next bot automatically.
+            // This prevents chain timeouts but means the game might pause (needs manual skip).
+            await submitDescription(roomId, botToken, description, env, undefined, origin);
+        } catch (fallbackError) {
+            console.error(`[Bot ${botId}] Direct submission also failed:`, fallbackError);
+        }
     }
 }
 
@@ -244,7 +253,7 @@ async function callLLM(
                     { role: 'user', content: combinedUserMessage }
                 ],
                 temperature: 0.7,
-                max_tokens: 256  // Required by some proxies to avoid timeout
+                max_tokens: 4096  // Increased for DeepSeek R1 thinking process
             })
         });
 
@@ -266,8 +275,7 @@ async function callLLM(
                 contents: [{
                     role: "user",
                     parts: [{ text: system + "\n\n" + user }]
-                }],
-                generationConfig: { responseMimeType: "application/json" }
+                }]
             })
         });
 
