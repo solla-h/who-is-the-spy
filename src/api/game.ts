@@ -367,7 +367,7 @@ export async function submitDescription(
       const alivePlayers = players.filter(p => p.is_alive === 1);
       const nextPlayer = alivePlayers[nextTurn];
       if (nextPlayer && nextPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin));
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin, ctx));
       }
     }
 
@@ -431,7 +431,7 @@ export async function skipPlayer(
       const alivePlayers = players.filter(p => p.is_alive === 1);
       const nextPlayer = alivePlayers[nextTurn];
       if (nextPlayer && nextPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin));
+        ctx.waitUntil(runBotTurn(env, roomId, nextPlayer.id, origin, ctx));
       }
     }
 
@@ -488,7 +488,7 @@ export async function startVoting(
       const bots = playersResult.results || [];
 
       for (const bot of bots) {
-        ctx.waitUntil(runBotTurn(env, roomId, bot.id, origin));
+        ctx.waitUntil(runBotTurn(env, roomId, bot.id, origin, ctx));
       }
     }
 
@@ -558,7 +558,7 @@ export async function confirmWord(
 
       const firstPlayer = alivePlayers[turn];
       if (firstPlayer && firstPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin));
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin, ctx));
       }
     }
 
@@ -1044,7 +1044,7 @@ export async function continueGame(
 
       const firstPlayer = alivePlayers[0];
       if (firstPlayer && firstPlayer.is_bot === 1) {
-        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin));
+        ctx.waitUntil(runBotTurn(env, roomId, firstPlayer.id, origin, ctx));
       }
     }
 
