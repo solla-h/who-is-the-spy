@@ -504,7 +504,10 @@ class GameStateManager {
     this.pollingInterval = null;
 
     /** @type {number} */
-    this.pollIntervalMs = 2000; // 2 seconds as per requirements
+    this.pollIntervalMs = 2000; // Default: 2 seconds
+
+    /** @type {number} */
+    this.fastPollIntervalMs = 1000; // Fast polling: 1 second (for AI turns)
 
     /** @type {Array<Function>} */
     this.stateChangeListeners = [];
@@ -772,6 +775,22 @@ class GameStateManager {
 
     await this._poll();
     return this.roomState;
+  }
+
+  /**
+   * Set poll interval dynamically
+   * @param {boolean} fast - Use fast polling (1s) or normal polling (2s)
+   */
+  setPollInterval(fast) {
+    const newInterval = fast ? this.fastPollIntervalMs : this.pollIntervalMs;
+
+    // Only restart if currently polling and interval changed
+    if (this.isPolling && this.roomId && this.token) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = setInterval(() => {
+        this._poll();
+      }, newInterval);
+    }
   }
 }
 
@@ -2250,10 +2269,32 @@ function updateDescriptionUI(state) {
   const currentTurnIndex = alivePlayers.length > 0 ? state.currentTurn % alivePlayers.length : 0;
   const currentPlayer = alivePlayers[currentTurnIndex];
 
-  // Update current player indicator
+  // Determine if current player is AI and their status
+  const isCurrentPlayerBot = currentPlayer?.isBot || false;
+  const hasCurrentPlayerDescribed = currentPlayer?.hasDescribed || false;
+
+  // Update current player indicator with status
   const currentPlayerDisplay = document.getElementById('current-player-name');
   if (currentPlayerDisplay) {
-    currentPlayerDisplay.textContent = currentPlayer ? currentPlayer.name : '---';
+    if (!currentPlayer) {
+      currentPlayerDisplay.textContent = '---';
+    } else if (hasCurrentPlayerDescribed) {
+      // Already described - show checkmark
+      currentPlayerDisplay.innerHTML = `${escapeHtml(currentPlayer.name)} <span style="color:var(--neon-green)">✓</span>`;
+    } else if (isCurrentPlayerBot) {
+      // AI is thinking - show animated indicator
+      currentPlayerDisplay.innerHTML = `${escapeHtml(currentPlayer.name)} <span class="thinking-indicator">🤖 思考中...</span>`;
+    } else {
+      // Human is typing
+      currentPlayerDisplay.innerHTML = `${escapeHtml(currentPlayer.name)} <span class="typing-indicator">✏️ 输入中...</span>`;
+    }
+  }
+
+  // Enable fast polling when it's AI's turn and they haven't described yet
+  if (gameStateManager && isCurrentPlayerBot && !hasCurrentPlayerDescribed) {
+    gameStateManager.setPollInterval(true); // 1 second polling
+  } else if (gameStateManager) {
+    gameStateManager.setPollInterval(false); // 2 second polling
   }
 
   // Update description history

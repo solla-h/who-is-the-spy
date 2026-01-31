@@ -72,7 +72,7 @@ export async function getRoomState(
     const PRESENCE_UPDATE_THRESHOLD_MS = 10000;
     const now = Date.now();
     const timeSinceLastUpdate = now - requestingPlayer.last_seen;
-    
+
     if (timeSinceLastUpdate > PRESENCE_UPDATE_THRESHOLD_MS) {
       await env.DB.prepare(`
         UPDATE players SET is_online = 1, last_seen = ? WHERE id = ?
@@ -111,6 +111,7 @@ export async function getRoomState(
         isHost: p.id === room.host_id,
         isAlive: p.is_alive === 1,
         isOnline: p.is_online === 1,
+        isBot: p.is_bot === 1,
         hasVoted: votes.some((v) => v.voter_id === p.id),
         hasDescribed: descriptions.some((d) => d.player_id === p.id && d.round === room.round),
         hasConfirmedWord: p.word_confirmed === 1,
@@ -140,10 +141,10 @@ export async function getRoomState(
       })),
       votes: room.phase === 'result' || room.phase === 'game-over'
         ? votes.map((v) => ({
-            voterId: v.voter_id,
-            targetId: v.target_id,
-            round: v.round,
-          }))
+          voterId: v.voter_id,
+          targetId: v.target_id,
+          round: v.round,
+        }))
         : [], // Only show votes after voting is complete
       settings,
       myPlayerId: requestingPlayer.id,  // Add current player's ID
@@ -179,7 +180,7 @@ export async function getRoomState(
     if (room.phase === 'result') {
       console.log('Result phase - gameState:', JSON.stringify(gameState));
       console.log('lastRoundEliminated:', gameState?.lastRoundEliminated);
-      
+
       if (gameState?.lastRoundEliminated) {
         state.result = {
           eliminatedPlayerIds: gameState.lastRoundEliminated,

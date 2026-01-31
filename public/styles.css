@@ -842,6 +842,31 @@ h3 {
   font-size: 1.2rem;
 }
 
+/* Thinking/Typing Status Indicators */
+.thinking-indicator,
+.typing-indicator {
+  font-size: 0.85rem;
+  margin-left: 8px;
+  animation: pulse-status 1.5s ease-in-out infinite;
+}
+
+.thinking-indicator {
+  color: var(--neon-purple);
+}
+
+.typing-indicator {
+  color: var(--neon-blue);
+}
+
+@keyframes pulse-status {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
 .card-title {
   color: var(--neon-blue);
   margin-bottom: 16px;

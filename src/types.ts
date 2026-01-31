@@ -133,6 +133,7 @@ export interface PlayerInfo {
   isHost: boolean;
   isAlive: boolean;
   isOnline: boolean;
+  isBot?: boolean;  // Whether this is an AI player
   role?: PlayerRole;
   hasVoted?: boolean;
   hasDescribed?: boolean;
