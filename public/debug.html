@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Debug Console - 谁是卧底</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Monaco', 'Consolas', 'SF Mono', monospace;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            color: #c9d1d9;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #58a6ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .auth-section {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .auth-section.hidden {
+            display: none;
+        }
+
+        .filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input,
+        select,
+        button {
+            padding: 10px 14px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+
+        button {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+
+        .btn-primary {
+            background: #238636;
+            border-color: #238636;
+        }
+
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #21262d;
+            padding: 16px 20px;
+            border-radius: 8px;
+            border-left: 4px solid #3fb950;
+        }
+
+        .stat-card.error {
+            border-left-color: #f85149;
+        }
+
+        .stat-card.timeout {
+            border-left-color: #d29922;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #f0f6fc;
+        }
+
+        .stat-label {
+            color: #8b949e;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .stat-detail {
+            color: #6e7681;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        .log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .log-entry {
+            background: #21262d;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .log-entry:hover {
+            border-color: #58a6ff;
+        }
+
+        .log-entry.success {
+            border-left: 4px solid #3fb950;
+        }
+
+        .log-entry.error {
+            border-left: 4px solid #f85149;
+        }
+
+        .log-entry.timeout {
+            border-left: 4px solid #d29922;
+        }
+
+        .log-header {
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .log-header:hover {
+            background: #30363d;
+        }
+
+        .log-main {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.success {
+            background: #238636;
+            color: #fff;
+        }
+
+        .badge.error {
+            background: #da3633;
+            color: #fff;
+        }
+
+        .badge.timeout {
+            background: #9e6a03;
+            color: #fff;
+        }
+
+        .badge.description {
+            background: #1f6feb;
+            color: #fff;
+        }
+
+        .badge.vote {
+            background: #8957e5;
+            color: #fff;
+        }
+
+        .log-meta {
+            color: #8b949e;
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .log-detail {
+            display: none;
+            padding: 16px;
+            border-top: 1px solid #30363d;
+            background: #161b22;
+        }
+
+        .log-entry.expanded .log-detail {
+            display: block;
+        }
+
+        .detail-section {
+            margin-bottom: 16px;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-title {
+            color: #58a6ff;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .prompt-box {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        .prompt-box.error-box {
+            border-color: #f85149;
+            color: #f85149;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8b949e;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .log-header {
+                flex-direction: column;
+            }
+
+            .log-meta {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🤖 AI Debug Console</h1>
+            <button onclick="loadLogs()" class="btn-primary">🔄 刷新</button>
+        </header>
+
+        <div class="auth-section" id="auth-section">
+            <input type="password" id="admin-key" placeholder="输入管理员密码" style="flex: 1;">
+            <button onclick="authenticate()" class="btn-primary">验证</button>
+        </div>
+
+        <div id="main-content" style="display: none;">
+            <div class="filters">
+                <input type="text" id="filter-room" placeholder="Room ID (可选)">
+                <select id="filter-status">
+                    <option value="">全部状态</option>
+                    <option value="success">✅ Success</option>
+                    <option value="error">❌ Error</option>
+                    <option value="timeout">⏱️ Timeout</option>
+                </select>
+                <input type="number" id="filter-limit" placeholder="数量" value="50" style="width: 80px;">
+                <button onclick="loadLogs()">筛选</button>
+            </div>
+
+            <div class="stats" id="stats"></div>
+            <div class="log-list" id="log-list">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminKey = localStorage.getItem('ai_debug_key') || '';
+
+        function authenticate() {
+            adminKey = document.getElementById('admin-key').value;
+            if (adminKey) {
+                localStorage.setItem('ai_debug_key', adminKey);
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('main-content').style.display = 'block';
+                loadLogs();
+            }
+        }
+
+        // 检查是否已有保存的密钥
+        if (adminKey) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('main-content').style.display = 'block';
+            loadLogs();
+        }
+
+        async function loadLogs() {
+            const roomId = document.getElementById('filter-room').value;
+            const status = document.getElementById('filter-status').value;
+            const limit = document.getElementById('filter-limit').value || 50;
+
+            const params = new URLSearchParams({ key: adminKey });
+            if (roomId) params.set('roomId', roomId);
+            if (status) params.set('status', status);
+            params.set('limit', limit);
+
+            try {
+                const [logsRes, statsRes] = await Promise.all([
+                    fetch(`/api/debug/logs?${params}`),
+                    fetch(`/api/debug/stats?key=${adminKey}${roomId ? `&roomId=${roomId}` : ''}`)
+                ]);
+
+                if (logsRes.status === 401) {
+                    localStorage.removeItem('ai_debug_key');
+                    location.reload();
+                    return;
+                }
+
+                const logsData = await logsRes.json();
+                const statsData = await statsRes.json();
+
+                renderStats(statsData.stats || []);
+                renderLogs(logsData.logs || []);
+            } catch (err) {
+                console.error('Failed to load logs:', err);
+                document.getElementById('log-list').innerHTML =
+                    '<div class="empty-state"><div class="icon">❌</div>加载失败，请检查网络连接</div>';
+            }
+        }
+
+        function renderStats(stats) {
+            const container = document.getElementById('stats');
+            if (!stats.length) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = stats.map(s => `
+                <div class="stat-card ${s.status}">
+                    <div class="stat-value">${s.count}</div>
+                    <div class="stat-label">${s.status}</div>
+                    <div class="stat-detail">
+                        平均: ${Math.round(s.avg_duration || 0)}ms<br>
+                        最大: ${Math.round(s.max_duration || 0)}ms
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLogs(logs) {
+            const container = document.getElementById('log-list');
+
+            if (!logs.length) {
+                container.innerHTML = '<div class="empty-state"><div class="icon">📭</div>暂无日志记录</div>';
+                return;
+            }
+
+            container.innerHTML = logs.map(log => `
+                <div class="log-entry ${log.status}" onclick="this.classList.toggle('expanded')">
+                    <div class="log-header">
+                        <div class="log-main">
+                            <span class="badge ${log.status}">${log.status}</span>
+                            <span class="badge ${log.action_type}">${log.action_type}</span>
+                            <strong>${log.bot_name || log.bot_display_name || log.bot_id.slice(0, 8)}</strong>
+                            <span style="color: #8b949e;">via ${log.provider || 'unknown'}</span>
+                        </div>
+                        <div class="log-meta">
+                            <div>${log.duration_ms || 0}ms</div>
+                            <div>Round ${log.round || '-'}</div>
+                            <div>${formatTime(log.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="log-detail">
+                        <div class="detail-section">
+                            <div class="detail-title">System Prompt</div>
+                            <div class="prompt-box">${escapeHtml(log.system_prompt || 'N/A')}</div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-title">User Prompt</div>
+                            <div class="prompt-box">${escapeHtml(log.user_prompt || 'N/A')}</div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-title">Raw Response</div>
+                            <div class="prompt-box">${escapeHtml(log.raw_response || 'N/A')}</div>
+                        </div>
+                        <div class="detail-section">
+                            <div class="detail-title">Cleaned Response</div>
+                            <div class="prompt-box">${escapeHtml(log.cleaned_response || 'N/A')}</div>
+                        </div>
+                        ${log.error_message ? `
+                            <div class="detail-section">
+                                <div class="detail-title">Error Message</div>
+                                <div class="prompt-box error-box">${escapeHtml(log.error_message)}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 自动刷新（每 60 秒）
+        setInterval(() => {
+            if (adminKey && document.getElementById('main-content').style.display !== 'none') {
+                loadLogs();
+            }
+        }, 60000);
+    </script>
+</body>
+
+</html>

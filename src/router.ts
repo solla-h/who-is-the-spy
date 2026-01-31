@@ -9,6 +9,7 @@ import { getProviders } from './api/providers';
 import { getAllProviders, addProvider, updateProvider, deleteProvider } from './api/admin';
 import { getRoomState } from './api/state';
 import { startGame, submitDescription, skipPlayer, startVoting, confirmWord, confirmWordPlayer, submitVote, finalizeVoting, continueGame, restartGame, updateSettings, kickPlayer } from './api/game';
+import { getAILogs, getAILogStats, cleanupOldLogs } from './api/debug';
 
 export async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
@@ -70,6 +71,47 @@ export async function handleRequest(request: Request, env: Env, ctx: ExecutionCo
         const result = await deleteProvider(request, env, providerId);
         return jsonResponse(result, result.success ? 200 : 400, corsHeaders);
       }
+    }
+
+    // ========== Debug Routes (需要管理员密码) ==========
+    if (path === '/api/debug/logs' && method === 'GET') {
+      const adminKey = url.searchParams.get('key');
+      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+        return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
+      }
+
+      const query = {
+        roomId: url.searchParams.get('roomId') || undefined,
+        botId: url.searchParams.get('botId') || undefined,
+        status: url.searchParams.get('status') || undefined,
+        limit: parseInt(url.searchParams.get('limit') || '50'),
+        offset: parseInt(url.searchParams.get('offset') || '0'),
+      };
+
+      const result = await getAILogs(env, query);
+      return jsonResponse(result, 200, corsHeaders);
+    }
+
+    if (path === '/api/debug/stats' && method === 'GET') {
+      const adminKey = url.searchParams.get('key');
+      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+        return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
+      }
+
+      const roomId = url.searchParams.get('roomId') || undefined;
+      const result = await getAILogStats(env, roomId);
+      return jsonResponse(result, 200, corsHeaders);
+    }
+
+    if (path === '/api/debug/cleanup' && method === 'POST') {
+      const adminKey = url.searchParams.get('key');
+      if (!adminKey || adminKey !== env.ADMIN_PASSWORD) {
+        return jsonResponse({ success: false, error: 'Unauthorized' }, 401, corsHeaders);
+      }
+
+      const daysToKeep = parseInt(url.searchParams.get('days') || '7');
+      const result = await cleanupOldLogs(env, daysToKeep);
+      return jsonResponse(result, 200, corsHeaders);
     }
 
     // Bot route
