@@ -31,7 +31,7 @@ export async function getAllProviders(request: Request, env: Env): Promise<{ suc
 
     try {
         const { results } = await env.DB.prepare(`
-            SELECT id, name, api_type, base_url, default_model, api_key_env, enabled, sort_order
+            SELECT id, name, api_type, base_url, default_model, api_key_env, api_key, enabled, sort_order
             FROM llm_providers
             ORDER BY sort_order ASC
         `).all<LLMProviderRow>();
@@ -65,15 +65,16 @@ export async function addProvider(request: Request, env: Env): Promise<{ success
         }
 
         await env.DB.prepare(`
-            INSERT INTO llm_providers (id, name, api_type, base_url, default_model, api_key_env, enabled, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO llm_providers (id, name, api_type, base_url, default_model, api_key_env, api_key, enabled, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
             body.id,
             body.name,
             body.api_type,
             body.base_url,
             body.default_model,
-            body.api_key_env,
+            body.api_key_env || '',
+            body.api_key || '',
             body.enabled ?? 1,
             body.sort_order ?? 99
         ).run();
@@ -108,6 +109,7 @@ export async function updateProvider(request: Request, env: Env, providerId: str
         if (body.base_url !== undefined) { updates.push('base_url = ?'); values.push(body.base_url); }
         if (body.default_model !== undefined) { updates.push('default_model = ?'); values.push(body.default_model); }
         if (body.api_key_env !== undefined) { updates.push('api_key_env = ?'); values.push(body.api_key_env); }
+        if (body.api_key !== undefined) { updates.push('api_key = ?'); values.push(body.api_key); }
         if (body.enabled !== undefined) { updates.push('enabled = ?'); values.push(body.enabled); }
         if (body.sort_order !== undefined) { updates.push('sort_order = ?'); values.push(body.sort_order); }
 

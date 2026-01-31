@@ -89,7 +89,8 @@ export interface LLMProviderRow {
   api_type: LLMApiType;
   base_url: string;
   default_model: string;
-  api_key_env: string;
+  api_key_env: string;      // Legacy: environment variable name (kept for backward compatibility)
+  api_key?: string;         // New: direct API key storage (preferred)
   enabled: number; // SQLite boolean
   sort_order: number;
 }

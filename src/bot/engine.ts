@@ -197,10 +197,13 @@ async function callLLM(
         };
     }
 
-    // Get API key from environment using dynamic key name
-    const apiKey = env[providerConfig.api_key_env] as string | undefined;
+    // Get API key: prefer database storage, fallback to environment variable
+    let apiKey = providerConfig.api_key;
+    if (!apiKey && providerConfig.api_key_env) {
+        apiKey = env[providerConfig.api_key_env] as string | undefined;
+    }
     if (!apiKey) {
-        throw new Error(`Missing API key: ${providerConfig.api_key_env}. Please set it via 'wrangler secret put ${providerConfig.api_key_env}'`);
+        throw new Error(`Missing API key for ${providerConfig.id}. Configure it in Admin page.`);
     }
 
     const { api_type, base_url, default_model } = providerConfig;

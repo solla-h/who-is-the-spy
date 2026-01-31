@@ -12,7 +12,7 @@ import { LLMProviderRow } from '../types';
 export async function getProviders(env: Env): Promise<{ success: boolean; providers?: LLMProviderRow[]; error?: string }> {
     try {
         const { results } = await env.DB.prepare(`
-            SELECT id, name, api_type, base_url, default_model, api_key_env, enabled, sort_order
+            SELECT id, name, api_type, base_url, default_model, api_key_env, api_key, enabled, sort_order
             FROM llm_providers
             WHERE enabled = 1
             ORDER BY sort_order ASC
@@ -31,7 +31,7 @@ export async function getProviders(env: Env): Promise<{ success: boolean; provid
 export async function getProviderById(env: Env, providerId: string): Promise<LLMProviderRow | null> {
     try {
         const provider = await env.DB.prepare(`
-            SELECT id, name, api_type, base_url, default_model, api_key_env, enabled, sort_order
+            SELECT id, name, api_type, base_url, default_model, api_key_env, api_key, enabled, sort_order
             FROM llm_providers
             WHERE id = ?
         `).bind(providerId).first<LLMProviderRow>();

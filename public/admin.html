@@ -475,8 +475,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">API Key 环境变量名</label>
-                    <input type="text" id="p-key-env" class="form-input" placeholder="e.g. OPENAI_API_KEY" required>
+                    <label class="form-label">API Key (直接填写，无需配置环境变量)</label>
+                    <input type="password" id="p-api-key" class="form-input" placeholder="sk-xxxx..."
+                        autocomplete="new-password">
+                    <small style="color:#888; font-size:0.8rem;">直接填写 API Key，保存在数据库中</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">备用：环境变量名 (可选，仅当上面为空时生效)</label>
+                    <input type="text" id="p-key-env" class="form-input" placeholder="e.g. OPENAI_API_KEY">
                 </div>
 
                 <div class="form-group">
@@ -598,7 +605,9 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">API Key</span>
-                            <span class="info-value">${escapeHtml(p.api_key_env)}</span>
+                            <span class="info-value" style="color: ${p.api_key ? 'var(--neon-green)' : '#ff6666'}">
+                                ${p.api_key ? '✅ 已配置 (' + p.api_key.substring(0, 8) + '...)' : '❌ 未配置'}
+                            </span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">URL</span>
@@ -656,7 +665,8 @@
                 document.getElementById('p-api-type').value = p.api_type;
                 document.getElementById('p-base-url').value = p.base_url;
                 document.getElementById('p-model').value = p.default_model;
-                document.getElementById('p-key-env').value = p.api_key_env;
+                document.getElementById('p-api-key').value = p.api_key || '';
+                document.getElementById('p-key-env').value = p.api_key_env || '';
                 document.getElementById('p-sort').value = p.sort_order;
 
                 title.textContent = `编辑 ${p.name}`;
@@ -688,6 +698,7 @@
                 api_type: document.getElementById('p-api-type').value,
                 base_url: document.getElementById('p-base-url').value.trim(),
                 default_model: document.getElementById('p-model').value.trim(),
+                api_key: document.getElementById('p-api-key').value.trim(),
                 api_key_env: document.getElementById('p-key-env').value.trim(),
                 sort_order: parseInt(document.getElementById('p-sort').value) || 10,
                 enabled: 1 // Default enabled, preservation handled on backend? No, we should keep it.
