@@ -252,8 +252,8 @@ async function callLLM(
                 messages: [
                     { role: 'user', content: combinedUserMessage }
                 ],
-                temperature: 0.7,
-                max_tokens: 4096  // Increased for DeepSeek R1 thinking process
+                temperature: 0.9,
+                max_tokens: 32000 //Increased for DeepSeek R1 thinking process
             })
         });
 
